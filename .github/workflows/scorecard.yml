@@ -16,11 +16,11 @@
 # Hardened per the repo's workflow policy (see zizmor.yml): every action is
 # SHA-pinned with a version comment, checkout runs with persist-credentials:false,
 # permissions are declared read-only at the top level and the write scopes are
-# granted only on the job that needs them. This is a self-audit only - it does
-# not build, test, or touch the publish/release pipeline. Note: publish_results
-# below publishes the OpenSSF supply-chain *score* to the OpenSSF API (the public
-# badge), not any software artifact - it is unrelated to the plugin release
-# pipeline and only works when run from the default branch.
+# granted only on the job that needs them. This is a self-audit only: it builds
+# nothing and it runs nothing out of the tree. Note: publish_results below sends
+# the OpenSSF supply-chain *score* to the OpenSSF API, which is what the public
+# badge reads, and never an artefact built from this repository. It only works
+# when run from the default branch.
 name: Scorecard supply-chain security
 
 on:

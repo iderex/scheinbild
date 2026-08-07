@@ -1,9 +1,15 @@
-# Developer Certificate of Origin (DCO) sign-off gate (#746). A contributor
+# Developer Certificate of Origin (DCO) sign-off gate. A contributor
 # legal-authorization mechanism - OpenSSF Silver / OSPS-LE-01.01 - implemented as a
-# self-contained first-party check, no external DCO App or third-party action (the
-# same internal-only posture as the PR-hygiene gate). It verifies every non-merge
-# commit in the PR carries a `Signed-off-by:` trailer matching its author, i.e. the
-# author asserted the DCO in ./DCO. Fail-closed: any unsigned commit reds the check.
+# self-contained first-party check rather than an external DCO App or a
+# third-party action, so the gate adds no dependency this repository does not
+# already carry. It verifies every non-merge commit in the PR carries a
+# `Signed-off-by:` trailer matching its author, i.e. the author asserted the DCO
+# in ./DCO. Fail-closed: any unsigned commit reds the check.
+#
+# Whether this repository takes outside changes at all, and under what terms, is
+# entry 4 in issue #1 and is not answered. What this check holds is the trailer
+# on every commit that reaches a pull request here, which is what the Sign-off
+# section of CONTRIBUTING.md describes. It settles nothing that entry has open.
 name: DCO
 
 on:
