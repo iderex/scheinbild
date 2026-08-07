@@ -1,8 +1,12 @@
 name: unicode-guard
 
 on:
-  # Every branch and every PR: the guard is a cheap read-only scan and must cover
-  # any future release branch too, not just main (one code line since #954).
+  # Every branch and every PR: the guard is a cheap read-only scan, so it covers
+  # any branch this repository ever carries rather than main alone. One
+  # consequence is worth knowing: a branch pushed here and then opened as a pull
+  # request fires both events against the same commit, so two check runs arrive
+  # under this job's one name, and reading the first of them is not reading the
+  # check.
   push:
     branches: ["**"]
   pull_request:
