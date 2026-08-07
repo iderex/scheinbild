@@ -28,6 +28,19 @@ On Windows:
     python -m venv .venv
     .venv\Scripts\python -m pip install --editable .
 
+## Install the exact graph the gate installed
+
+The commands above resolve dependencies fresh, which is what you want while
+reading the code and not what you want while reproducing a number. `uv.lock`
+holds the graph the gate is green about, and installing from it resolves
+nothing:
+
+    uv sync --locked
+
+It fails rather than quietly updating the lockfile, so an install that succeeds
+is an install of the committed graph and not of some later one. The gate holds
+the same two properties under the check named `Locked dependencies`.
+
 ## Check the install
 
 The tree holds two importable units, the forward model and the standard
