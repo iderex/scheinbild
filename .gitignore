@@ -1,0 +1,13 @@
+# The virtual environment the README tells an operator to create.
+.venv/
+
+# Build and install artefacts.
+build/
+dist/
+*.egg-info/
+
+# Interpreter caches. These are machine and interpreter specific, and a
+# committed one is a byte that differs between two clones for no reason the
+# model can account for.
+__pycache__/
+*.py[cod]
