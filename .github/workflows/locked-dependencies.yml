@@ -1,0 +1,81 @@
+# The dependency graph a green run is a statement about (#18).
+#
+# Two properties, one check.
+#
+# The lockfile matches the declared dependencies. A dependency added to
+# pyproject.toml and not locked passes on a machine that already has it and
+# fails on the next clean one, so it is refused here instead.
+#
+# Installation resolves nothing. It installs exactly the versions in the
+# committed lockfile and fails if the lockfile would have to change. An install
+# that quietly resolves a newer version means a green run proves nothing about
+# the graph anyone will actually get.
+#
+# The check reports the file that drifted and the command that regenerates it.
+# It never runs that command and it never commits: the drifted file is the
+# evidence for what caused the drift, and a check that repairs the evidence
+# leaves nobody able to say what happened.
+#
+# Hardened the same way as the other workflows here: actions SHA-pinned with a
+# version comment, checkout with persist-credentials false, deny-all at the
+# workflow level with the single read scope granted on the job.
+name: Locked dependencies
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions: {}
+
+# Cancel a superseded run on the same ref. This job only reads and resolves; it
+# publishes nothing, so cancelling an obsolete run is safe.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # The job name is the literal check-run name a ruleset would require. It is
+  # set explicitly and it is meant to be stable: a branch protection rule
+  # matches this string, so renaming it silently removes the requirement.
+  locked-dependencies:
+    name: Locked dependencies
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing here pushes, so do not leave the token in .git/config.
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        # No cache. A restored resolver cache is a place a version that is not
+        # in the lockfile could come from, which is the property this job
+        # exists to hold.
+
+      - name: The lockfile matches the declared dependencies
+        run: |
+          set -euo pipefail
+          if ! uv lock --check; then
+            echo "::error file=uv.lock::uv.lock has drifted from pyproject.toml. The declared dependencies and the locked graph disagree, so an install on a clean machine would not get the graph this branch was tested with. Regenerate with 'uv lock' and commit both pyproject.toml and uv.lock. This check does not regenerate the file, because the drifted file is the evidence for what caused the drift."
+            exit 1
+          fi
+
+      - name: Installation resolves nothing
+        run: |
+          set -euo pipefail
+          if ! uv sync --locked; then
+            echo "::error file=uv.lock::Installing from uv.lock would have required the lockfile to change, so this install did not reproduce the committed graph. Regenerate with 'uv lock' and commit uv.lock. This check does not regenerate the file."
+            exit 1
+          fi
+
+      - name: Report what was installed
+        # The verdict above is the check. This prints the resolved graph so a
+        # reader of a green run can see which versions it was green about,
+        # rather than taking the word "locked" for it.
+        run: uv pip list
