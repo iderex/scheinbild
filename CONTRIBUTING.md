@@ -63,6 +63,17 @@ something.
 does not. `git commit -s` writes the trailer; `git rebase --signoff <base>` adds
 it to commits that already exist.
 
+`Install and import (ubuntu-latest)`, `Install and import (macos-latest)` and
+`Install and import (windows-latest)`. On each platform, a clean checkout runs
+the install commands this file gives you for that platform and then imports both
+packages. Red means a fresh clone does not install, or installs and does not
+import, on that operating system. It is the check most likely to be red for a
+reason that has nothing to do with what you changed, because it is the one that
+notices when a path or an interpreter assumption holds on two platforms and not
+on the third. The job derives the interpreter version out of `requires-python`
+rather than restating it, so a change to the shape of that line stops the job
+instead of testing some other interpreter.
+
 `Locked dependencies`. Two properties. The lockfile agrees with the dependencies
 declared in `pyproject.toml`, and installation in the gate resolves nothing and
 installs exactly what the lockfile says. Red means one of the two is false, and
@@ -77,7 +88,9 @@ database has something to say about a package you are adding.
 `Reject Trojan Source Unicode`. Bidirectional and invisible Unicode control
 characters in tracked text. These make source render differently from how it
 executes, which hides logic from whoever reads the diff. Red means such a
-character is in the tree.
+character is in the tree. This name arrives twice on a pull request opened from a
+branch in this repository, once for the push and once for the pull request, so
+two rows carry it and reading the first one is not reading the check.
 
 `Audit workflows (zizmor)`. Static analysis of the workflow files themselves.
 Red means a workflow you touched has an actionable security finding: an unpinned
@@ -87,7 +100,13 @@ commit SHA with the version in a comment, keep checkout on
 the workflow level.
 
 Results also appear in the code scanning tab. Those are findings to triage, not
-a gate.
+a gate. Code scanning also publishes its own row, named `zizmor`, beside the
+job's row; the job is what fails the pull request.
+
+One workflow is deliberately absent from this list. `Scorecard analysis` runs on
+`main`, on a schedule and when the ruleset changes, and has no pull request
+trigger, so your pull request will not show it. What this section covers is what
+your own pull request publishes.
 
 ## What a change to a frozen parameter costs
 
