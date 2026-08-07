@@ -1,0 +1,35 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "scheinbild"
+version = "0.0.0"
+description = "A forward model of streaking, and the neon 2s-2p delay discrepancy as its first test"
+readme = "README.md"
+
+# The interpreter version is pinned here and in no other file. A range is not a
+# pin: two minor releases do not have to agree in the last digits, and a run
+# that produces a published number has to be repeatable, which is the rule in
+# docs/decisions/determinism-and-seeding.md. Nothing else in the tree may state
+# this number; a document that needs it points at this field instead.
+#
+# This is also the only place that refuses a wrong interpreter. An installer
+# reading it stops before anything is built, rather than producing an
+# environment that works until the last digits matter.
+requires-python = "==3.14.*"
+
+# Empty on purpose. The model has no runtime dependency yet, and every one it
+# gains arrives with the lockfile that pins it.
+dependencies = []
+
+# No license field. Which licence this repository carries is entry 1 in issue
+# #1 and is not settled, and a guess here would be a licence claim rather than
+# a placeholder.
+
+# Two importable units, not two directories inside one. The wall between the
+# forward model and the standard analysis is meant to become something a check
+# can refuse, and a check cannot refuse a wall that does not exist in the
+# package structure.
+[tool.hatch.build.targets.wheel]
+packages = ["src/scheinbild_model", "src/scheinbild_analysis"]
