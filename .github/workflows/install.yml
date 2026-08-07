@@ -1,0 +1,112 @@
+# A fresh clone installs and imports on all three supported platforms (#14).
+#
+# The claim in #14 is about Linux, macOS and Windows. A claim tested on one of
+# them is a claim about one of them, so this runs the commands the README gives
+# an operator, on each, from a clean checkout.
+#
+# Windows earns its place rather than being included for symmetry. It is where
+# the virtual environment lays its interpreter out under a different directory,
+# where the README therefore carries a separate command line, and where a path
+# assumption goes unnoticed on the platform the author does not use.
+#
+# This is NOT the test suite workflow. There is no suite yet, and the workflow
+# that runs one with the check names a ruleset can require is #16. This one
+# answers a narrower question: does the thing install and do both packages
+# import.
+#
+# Hardened like the rest of the workflows here: actions SHA-pinned with a
+# version comment, checkout with persist-credentials false, deny-all at the
+# workflow level with the single read scope granted on the job.
+name: Install
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  install:
+    # The matrix leg is part of the check-run name, so these read as
+    # "Install and import (ubuntu-latest)" and so on. Set explicitly, because a
+    # branch protection rule matches the literal string and a defaulted name
+    # changes the day someone adds a display name.
+    name: Install and import (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      # One platform failing must not cancel the others. Which platforms are
+      # green is the whole output of this job.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the interpreter pin out of pyproject.toml
+        id: pin
+        # Derived, never restated. requires-python is the only place in the tree
+        # that carries this number, and a workflow that wrote it again would be
+        # a second declaration to drift against the first. Portable sed rather
+        # than grep -P, because the macOS runner has BSD grep.
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(sed -n 's/^requires-python = "==\([0-9]*\.[0-9]*\)\.\*"$/\1/p' pyproject.toml)
+          if [ -z "$version" ]; then
+            echo "::error file=pyproject.toml::Could not read the interpreter pin out of requires-python. This job derives the version rather than restating it, so a change to the shape of that line stops the job instead of silently testing some other interpreter."
+            exit 1
+          fi
+          echo "Derived interpreter pin: ${version}"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+
+      - name: Set up the pinned interpreter
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ steps.pin.outputs.version }}
+
+      - name: Install, using the commands the README gives an operator
+        if: runner.os != 'Windows'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv .venv
+          .venv/bin/python -m pip install --editable .
+
+      - name: Install, using the commands the README gives an operator
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          python -m venv .venv
+          .venv\Scripts\python -m pip install --editable .
+
+      - name: Both packages import
+        if: runner.os != 'Windows'
+        shell: bash
+        run: .venv/bin/python -c "import scheinbild_model, scheinbild_analysis"
+
+      - name: Both packages import
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .venv\Scripts\python -c "import scheinbild_model, scheinbild_analysis"
+
+      - name: Report the interpreter the import ran on
+        if: runner.os != 'Windows'
+        shell: bash
+        run: .venv/bin/python -c "import sys, scheinbild_model, scheinbild_analysis; print(sys.version); print(scheinbild_model.__file__); print(scheinbild_analysis.__file__)"
+
+      - name: Report the interpreter the import ran on
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .venv\Scripts\python -c "import sys, scheinbild_model, scheinbild_analysis; print(sys.version); print(scheinbild_model.__file__); print(scheinbild_analysis.__file__)"
