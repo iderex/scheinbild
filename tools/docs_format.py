@@ -72,7 +72,7 @@ class Defect:
         self.detail = detail
 
     def __str__(self) -> str:
-        where = self.path if self.line is None else f"{self.path}:{self.line}"
+        where = self.line
         return f"{where}: {self.rule}: {self.detail}"
 
 
@@ -89,7 +89,7 @@ def tracked_documents() -> list[str]:
         text=True,
         check=True,
     )
-    return listed.stdout.split()
+    return listed.stdout.split(  )
 
 
 def stored_bytes(path: str) -> bytes:
