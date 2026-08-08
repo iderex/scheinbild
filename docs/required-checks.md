@@ -59,11 +59,15 @@ platform: `Install and import (ubuntu-latest)`, `Install and import
 One job has no display name at all, deliberately, so no line of the output above
 belongs to it:
 
-    git grep -n 'name:' origin/main -- .github/workflows/dependency-review.yml
-    origin/main:.github/workflows/dependency-review.yml:1:name: Dependency review
-    origin/main:.github/workflows/dependency-review.yml:16:  # No `name:` on this job: the "Protect main" ruleset's required status check
-    origin/main:.github/workflows/dependency-review.yml:18:  # ("dependency-review") when no `name:` is set. Overriding it here would
-    origin/main:.github/workflows/dependency-review.yml:27:      - name: Dependency review
+    git grep -n 'name:' HEAD -- .github/workflows/dependency-review.yml
+    HEAD:.github/workflows/dependency-review.yml:1:name: Dependency review
+    HEAD:.github/workflows/dependency-review.yml:16:  # This job carries no `name:` on purpose, and the reason is what an edit here
+    HEAD:.github/workflows/dependency-review.yml:36:      - name: Dependency review
+
+The reference is `HEAD` for the same reason it is `HEAD` above: the branch
+carrying this paragraph is also the branch that rewrote that comment, and
+quoting the mainline would be a claim about a tree that does not yet carry the
+edit.
 
 Its check run takes the job id, so the name a configuration would have to match
 is `dependency-review`, in lower case with a hyphen, and it is the one name in the
@@ -169,15 +173,24 @@ names above that are marked as intended to block, is what would give this
 document force. Until somebody does that, this file records an intention and the
 merge button does not read it.
 
-## One disagreement between this document and the tree
+## A disagreement this document used to carry, and how it was settled
 
-The comment quoted above says the check run name is matched by the "Protect main"
-ruleset's required status check. There is no ruleset of that name here, the one
-ruleset is named `gate`, and it carries no required status check for that name or
-any other. The comment describes a configuration this repository does not have.
+The comment on that job used to say the check run name was matched by the
+"Protect main" ruleset's required status check. There is no ruleset of that name
+here, the one ruleset is named `gate`, and it carries no required status check
+for that name or any other, so the sentence described a configuration this
+repository does not have. This document recorded the disagreement and left the
+repair to issue #47, because issue #21's own boundary was that it changed no
+workflow file and no setting.
 
-The reason for not repairing it here is that this document changes no workflow
-file and no setting, which is issue #21's own boundary. The repair is issue #47.
-The comment's technical point is correct and is the reason that job still has no
-display name: the check run name defaults to the job id, so a name added there
-would change the string a future configuration has to match.
+Issue #47 rewrote the comment. What was correct in it survives, because the
+technical point was never the wrong part: a check run takes the job id when no
+display name is set, so a display name added to that job would change the string
+a future configuration has to match, and that is still the reason the job carries
+none. What the comment now says about the present is that nothing matches the
+string, which is what the ruleset output at the top of this document shows.
+
+The rest of that file was swept at the same time. The comment on
+`fail-on-severity` said a vulnerable dependency blocks the pull request, which is
+the same error one step smaller: the setting fails the job, and a failed job here
+stops nothing.

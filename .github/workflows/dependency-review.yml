@@ -13,10 +13,19 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # No `name:` on this job: the "Protect main" ruleset's required status check
-  # matches the literal check-run name, which defaults to the job id
-  # ("dependency-review") when no `name:` is set. Overriding it here would
-  # rename the check run and silently break the required-status-check gate.
+  # This job carries no `name:` on purpose, and the reason is what an edit here
+  # would cost rather than a configuration that is reading it. A check-run name
+  # defaults to the job id when no display name is set, so this job publishes
+  # `dependency-review`, in lower case with a hyphen, and that is the literal
+  # string any configuration requiring this check would have to match. Adding a
+  # display name would rename the check run, which is why it is not an edit to
+  # make on its own.
+  #
+  # Nothing matches that string today. The one ruleset on the default branch
+  # carries no required status check, so no verdict this job reaches can stop a
+  # merge. docs/required-checks.md records that state with the commands that
+  # read it, and the level this check is intended to have if it is ever
+  # required.
   dependency-review:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -27,7 +36,9 @@ jobs:
       - name: Dependency review
         uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
         with:
-          # Fail closed: any known vulnerability in a newly introduced or
-          # upgraded dependency blocks the PR. Relax only with a documented
-          # reason.
+          # Fail closed: any known vulnerability at low severity or above, in a
+          # dependency this pull request introduces or upgrades, fails this
+          # job. Failing the job is the whole of the effect. Nothing requires
+          # this check, so a red run here leaves the merge button exactly as it
+          # was. Raise the threshold only with a documented reason.
           fail-on-severity: low
