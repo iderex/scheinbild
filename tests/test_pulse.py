@@ -86,9 +86,7 @@ class ThePulseIsBuiltFromAManifestAndNothingElse(unittest.TestCase):
         for missing in (CENTRAL_ENERGY, DURATION, CHIRP, TIME_GRID_HALF_WIDTH):
             with self.subTest(missing=missing):
                 parameters = {
-                    name: value
-                    for name, value in _BASE.items()
-                    if name != missing
+                    name: value for name, value in _BASE.items() if name != missing
                 }
                 manifest = Manifest.of(
                     parameters=parameters, seeds={}, code_version="0.0.0"
@@ -167,9 +165,7 @@ class TheUnchirpedPulseIsTransformLimited(unittest.TestCase):
         for duration in (50.0, 200.0, 800.0):
             with self.subTest(duration=duration):
                 pulse = Pulse(
-                    _manifest(
-                        **{DURATION: duration, TIME_GRID_HALF_WIDTH: 4000.0}
-                    )
+                    _manifest(**{DURATION: duration, TIME_GRID_HALF_WIDTH: 4000.0})
                 )
                 product_in_electronvolt_attosecond = (
                     pulse.bandwidth_electronvolt * pulse.duration_attosecond
@@ -196,9 +192,7 @@ class TheUnchirpedPulseIsTransformLimited(unittest.TestCase):
     def test_a_shorter_pulse_is_broader(self):
         short = Pulse(_manifest(**{DURATION: 100.0}))
         long = Pulse(_manifest(**{DURATION: 400.0, TIME_GRID_HALF_WIDTH: 1200.0}))
-        self.assertGreater(
-            short.bandwidth_electronvolt, long.bandwidth_electronvolt
-        )
+        self.assertGreater(short.bandwidth_electronvolt, long.bandwidth_electronvolt)
 
 
 class TheChirpIsPresentAndDoesWhatAChirpDoes(unittest.TestCase):
@@ -268,9 +262,7 @@ class ADurationAndABandwidthThatCannotGoTogetherAreRefused(unittest.TestCase):
         # constructor that refused any supplied bandwidth at all.
         derived = Pulse(_manifest()).bandwidth_electronvolt
         pulse = Pulse(_manifest(**{BANDWIDTH: derived}))
-        self.assertAlmostEqual(
-            pulse.bandwidth_electronvolt, derived, places=12
-        )
+        self.assertAlmostEqual(pulse.bandwidth_electronvolt, derived, places=12)
 
     def test_a_manifest_with_no_bandwidth_derives_one(self):
         # The ordinary case. A manifest that does not state the bandwidth is

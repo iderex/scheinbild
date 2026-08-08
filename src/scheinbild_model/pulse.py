@@ -123,9 +123,7 @@ class Pulse:
         self.central_energy_electronvolt = _as_float(manifest, CENTRAL_ENERGY)
         self.duration_attosecond = _as_float(manifest, DURATION)
         self.chirp_electronvolt_per_attosecond = _as_float(manifest, CHIRP)
-        self.time_grid_half_width_attosecond = _as_float(
-            manifest, TIME_GRID_HALF_WIDTH
-        )
+        self.time_grid_half_width_attosecond = _as_float(manifest, TIME_GRID_HALF_WIDTH)
 
         if self.central_energy_electronvolt <= 0.0:
             raise PulseRefused(
@@ -184,8 +182,7 @@ class Pulse:
         supplied = _as_float(manifest, BANDWIDTH)
         if supplied <= 0.0:
             raise PulseRefused(
-                f"The supplied bandwidth is {supplied} eV. A bandwidth is "
-                "positive."
+                f"The supplied bandwidth is {supplied} eV. A bandwidth is positive."
             )
         product = attoseconds_to_atomic_time(
             self.duration_attosecond
@@ -223,9 +220,7 @@ class Pulse:
         in the spectrum, and that structure arrives in the spectrogram looking
         like something to explain.
         """
-        at_the_edge = self.intensity_envelope(
-            self.time_grid_half_width_attosecond
-        )
+        at_the_edge = self.intensity_envelope(self.time_grid_half_width_attosecond)
         if at_the_edge > EDGE_INTENSITY_FRACTION:
             raise PulseRefused(
                 "The time grid is too short to hold this pulse. At its edge, "
@@ -265,10 +260,7 @@ class Pulse:
             energy_electronvolt - self.central_energy_electronvolt
         )
         return exp(
-            -self._a
-            * offset
-            * offset
-            / (2.0 * (self._a * self._a + self._b * self._b))
+            -self._a * offset * offset / (2.0 * (self._a * self._a + self._b * self._b))
         )
 
 

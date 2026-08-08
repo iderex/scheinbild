@@ -116,9 +116,7 @@ class TheManifestRefusesWhatCouldNotDescribeARun(unittest.TestCase):
         for name in ("a\tb", "a\nb", "a\rb"):
             with self.subTest(name=name):
                 with self.assertRaises(ManifestRefused) as refusal:
-                    Manifest.of(
-                        parameters={name: 1.0}, seeds={}, code_version="0.0.0"
-                    )
+                    Manifest.of(parameters={name: 1.0}, seeds={}, code_version="0.0.0")
                 self.assertIn("collide", str(refusal.exception))
 
     def test_a_string_value_carrying_a_separator_is_refused(self):
@@ -161,9 +159,7 @@ class TheManifestRefusesWhatCouldNotDescribeARun(unittest.TestCase):
 
     def test_a_negative_seed_is_refused(self):
         with self.assertRaises(ManifestRefused):
-            Manifest.of(
-                parameters={}, seeds={"a_seed": -1}, code_version="0.0.0"
-            )
+            Manifest.of(parameters={}, seeds={"a_seed": -1}, code_version="0.0.0")
 
 
 class TheHashDoesNotMoveForAReasonThatIsNotAParameter(unittest.TestCase):
@@ -176,16 +172,12 @@ class TheHashDoesNotMoveForAReasonThatIsNotAParameter(unittest.TestCase):
                 name: _FIXED_PARAMETERS[name]
                 for name in reversed(list(_FIXED_PARAMETERS))
             },
-            seeds={
-                name: _FIXED_SEEDS[name] for name in reversed(list(_FIXED_SEEDS))
-            },
+            seeds={name: _FIXED_SEEDS[name] for name in reversed(list(_FIXED_SEEDS))},
             code_version=_FIXED_CODE_VERSION,
         )
         # The insertion orders really are different, so this is not comparing a
         # dict with itself.
-        self.assertNotEqual(
-            list(forwards.parameters), list(backwards.parameters)
-        )
+        self.assertNotEqual(list(forwards.parameters), list(backwards.parameters))
         self.assertEqual(forwards.digest(), backwards.digest())
 
     def test_the_same_value_written_differently_does_not_move_the_hash(self):

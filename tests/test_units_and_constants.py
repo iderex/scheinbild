@@ -172,9 +172,7 @@ class TheConversionsInvert(unittest.TestCase):
 
     def assertRoundTrips(self, produced, value):
         self.assertTrue(
-            math.isclose(
-                produced, value, rel_tol=_ROUND_TRIP_TOLERANCE, abs_tol=0.0
-            ),
+            math.isclose(produced, value, rel_tol=_ROUND_TRIP_TOLERANCE, abs_tol=0.0),
             f"A round trip returned {produced!r} for an input of {value!r}.",
         )
 
@@ -227,9 +225,7 @@ class TheConversionsGoTheRightWay(unittest.TestCase):
 
     def test_the_tabulated_number_of_electronvolts_is_one_hartree(self):
         self.assertAlmostEqual(
-            electronvolts_to_hartree(
-                CONSTANTS["hartree_energy_in_electronvolt"].value
-            ),
+            electronvolts_to_hartree(CONSTANTS["hartree_energy_in_electronvolt"].value),
             1.0,
             places=12,
         )

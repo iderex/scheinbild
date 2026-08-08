@@ -1,0 +1,149 @@
+# Lint, format, types and document formatting (#17).
+#
+# Three jobs rather than one, and each one carries a display name of its own:
+#
+#     Lint and format
+#     Type check
+#     Docs format
+#
+# The names are the point. A single job called "checks" tells a reader that
+# something is wrong and makes them open a log to find out which of four things
+# it was. Three names say it on the row. They are set explicitly, because a
+# check-run name left to default is the job id, and it changes the day somebody
+# adds a display name to the job.
+#
+# Nothing here rewrites a branch. Every leg checks and reports; the command that
+# repairs the finding is printed in the failure and is run by whoever owns the
+# branch. A gate that formats the code it is judging has changed the thing it
+# was judging, and the run after it is green about a tree nobody wrote.
+#
+# The two third party tools are pinned to exact versions in the `check` group in
+# pyproject.toml and installed from the lockfile, so a run here uses the versions
+# a reader gets from `uv sync --locked --group check` and not whatever was
+# released this morning. `uv run --locked` fails rather than updating the
+# lockfile. The document check needs no tool at all: it is in the tree and it is
+# the standard library, for the reason written at the top of it.
+#
+# Hardened like the rest of the workflows here: actions SHA-pinned with a
+# version comment, checkout with persist-credentials false, deny-all at the
+# workflow level with the single read scope granted per job.
+name: Static checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint-and-format:
+    name: Lint and format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing here pushes, so do not leave the token in .git/config.
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        # No cache, for the reason the locked-dependencies job gives: a restored
+        # resolver cache is a place a version that is not in the lockfile could
+        # come from.
+
+      - name: Lint
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! uv run --locked --group check ruff check --output-format github .; then
+            echo "::error::Lint failed. The annotations above name the file, the line and the rule. The rule set is the select list under [tool.ruff.lint] in pyproject.toml. Fix with: uv run --group check ruff check --fix . where the rule is fixable, and by hand where it is not."
+            exit 1
+          fi
+
+      - name: Format
+        shell: bash
+        run: |
+          set -euo pipefail
+          # --diff rather than --check: the diff is what says why a file is
+          # named, and a name on its own sends the reader to run the formatter
+          # blind to find out.
+          if ! uv run --locked --group check ruff format --diff .; then
+            echo "::error::Formatting differs from what the formatter produces. The files and the exact hunks are above. This job does not rewrite your branch. Fix with: uv run --group check ruff format . and commit the result."
+            exit 1
+          fi
+
+  type-check:
+    name: Type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      - name: Type check
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No paths on the command line. Which paths are checked is the files
+          # list under [tool.mypy] in pyproject.toml, so the command a
+          # contributor runs and the command the gate runs cover the same set,
+          # and neither can widen or narrow it without a diff.
+          #
+          # That set is src. The suite is not in it, and issue #56 carries both
+          # the count of what that costs and the work of closing it. A green row
+          # here is a statement about src.
+          if ! uv run --locked --group check mypy; then
+            echo "::error::Type check failed. The lines above name the file, the line and the error code. The settings are under [tool.mypy] in pyproject.toml. Reproduce with: uv run --group check mypy"
+            exit 1
+          fi
+
+  docs-format:
+    name: Docs format
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      - name: Docs format
+        shell: bash
+        run: |
+          set -euo pipefail
+          # No third party formatter, and no dependency for this leg at all. The
+          # checker is in the tree, it is the standard library, and what it
+          # judges and what it deliberately does not judge are written at the
+          # top of it. The short version is that a general Markdown formatter
+          # was measured against this corpus first and rewrites it.
+          #
+          # It reads the bytes git stores rather than the working copy, which is
+          # what keeps a Windows contributor from being told that every document
+          # in the tree is broken on a tree they have not modified. The
+          # interpreter is the one uv installs from the pin in pyproject.toml.
+          if ! uv run --locked python -m tools.docs_format --check; then
+            echo "::error::A tracked document has a formatting defect. The lines above name the file, the line and the rule. This job does not rewrite your branch. Fix the repairable ones with: python -m tools.docs_format --fix"
+            exit 1
+          fi
