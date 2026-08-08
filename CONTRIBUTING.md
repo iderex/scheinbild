@@ -119,6 +119,38 @@ number, and a green install is a statement about a fresh resolve, the one you
 get from the install commands above while reading the code. Both are worth
 having and neither implies the other.
 
+`Lint and format`. Two legs under one name. The linter runs the rule set under
+`[tool.ruff.lint]` in `pyproject.toml`, and the formatter is asked whether the
+tree differs from what it would produce. Red means one of the two has something
+to say, and the failure prints the command that repairs it. Neither leg rewrites
+your branch: a gate that formats the code it is judging has changed the thing it
+was judging. Run both yourself first:
+
+    uv sync --locked --group check
+    uv run --group check ruff check .
+    uv run --group check ruff format .
+
+`Type check`. The checker runs strict over the paths named by `files` under
+`[tool.mypy]` in `pyproject.toml`, which are the forward model, the standard
+analysis and the tools the gate runs. The test suite is not among them and does
+not type check today; issue #56 carries the count and the work. So a green row
+here is a statement about what that line names, and not about the suite.
+Reproduce it with `uv run --group check mypy`.
+
+`Docs format`. Four properties of tracked Markdown: LF line endings in the
+stored bytes, no line ending in whitespace, a final newline, and no hard tab.
+Red means one of them is broken, and the failure names the file, the line and
+the rule. Three of the four are repaired by `python -m tools.docs_format --fix`;
+a hard tab is not, because what replaces one depends on what it was standing in
+for.
+
+This leg is not a Markdown formatter and does not judge heading style, list
+markers, link form, the width prose wraps at, or whether a code block is
+indented or fenced. Why it stops there is written at the top of
+`tools/docs_format.py`. It reads the bytes git stores rather than your working
+copy, which is what keeps a checkout with different line endings from reporting
+every document in the tree as broken.
+
 `Locked dependencies`. Two properties. The lockfile agrees with the dependencies
 declared in `pyproject.toml`, and installation in the gate resolves nothing and
 installs exactly what the lockfile says. Red means one of the two is false, and

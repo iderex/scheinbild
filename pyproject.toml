@@ -33,3 +33,59 @@ dependencies = []
 # package structure.
 [tool.hatch.build.targets.wheel]
 packages = ["src/scheinbild_model", "src/scheinbild_analysis"]
+
+# The tools the gate's own checks run, pinned to exact versions for the reason
+# the runtime graph is pinned: a check whose tool floats can turn red on a file
+# nobody touched, and the first thing anybody does with a finding like that is
+# stop trusting the check. An upgrade here is a change with a diff, which is
+# what it should be.
+#
+# A group rather than a runtime dependency, because nothing the model computes
+# imports any of them. `uv sync --locked` installs neither this group nor
+# anything from it, so the suite and the install checks still measure the graph
+# a reader gets. The gate asks for it by name, and so does anyone running these
+# checks before they push:
+#
+#     uv sync --locked --group check
+[dependency-groups]
+check = [
+  "ruff==0.14.4",
+  "mypy==1.18.2",
+]
+
+# No line-length here, deliberately. The formatter and the linter read the same
+# default from one place, and a value set for one of them and not the other is
+# how a tree acquires a formatter that produces lines its own linter refuses.
+[tool.ruff.lint]
+# The default set, plus two.
+#
+# `W` is the rest of pycodestyle: trailing whitespace and the missing final
+# newline, which are invisible in a diff and noisy in every later one.
+#
+# `I` is import order. It is here because this repository intends to refuse an
+# import from the forward model inside the analysis package, and a tree whose
+# import blocks are already sorted is a tree where a new import is visible in
+# the diff instead of buried in a reshuffled block.
+#
+# `E501` is not in this set and is not an oversight. Line length is decided by
+# the formatter, which knows what it can and cannot break; a linter rule saying
+# the same thing differently produces findings the formatter refuses to fix.
+select = ["E4", "E7", "E9", "F", "W", "I"]
+
+[tool.mypy]
+# Strict, over the two importable units and the gate's own tools. Both halves
+# are deliberate and the second one is a limit rather than a preference.
+#
+# Strict is worth its cost here more than on most boards. The objects moving
+# through the model are arrays whose axis order carries meaning, and an axis
+# order mistake produces a plausible wrong picture rather than a crash. Static
+# checking catches few of those and the ones it catches are cheap.
+#
+# What `files` leaves out is the test suite, which does not type check today.
+# The count is in issue #56, which holds the work of widening this line, so the
+# gap is a number somebody can act on rather than a silence. Nothing here
+# pretends the suite is covered: a green `Type check` is a statement about what
+# this line names and about nothing else.
+python_version = "3.14"
+strict = true
+files = ["src", "tools"]

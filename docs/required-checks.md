@@ -35,6 +35,9 @@ enforces the shape of the change and not that anybody read it.
 Derived from the workflow files rather than remembered:
 
     git grep -n '^    name:' HEAD -- .github/workflows
+    HEAD:.github/workflows/checks.yml:46:    name: Lint and format
+    HEAD:.github/workflows/checks.yml:86:    name: Type check
+    HEAD:.github/workflows/checks.yml:118:    name: Docs format
     HEAD:.github/workflows/dco.yml:30:    name: DCO sign-off
     HEAD:.github/workflows/install.yml:42:    name: Install and import (${{ matrix.os }})
     HEAD:.github/workflows/locked-dependencies.yml:43:    name: Locked dependencies
@@ -43,11 +46,11 @@ Derived from the workflow files rather than remembered:
     HEAD:.github/workflows/unicode-guard.yml:27:    name: Reject Trojan Source Unicode
     HEAD:.github/workflows/zizmor.yml:44:    name: Audit workflows (zizmor)
 
-The reference is `HEAD` rather than `origin/main` because the branch that added
-`test.yml` is where this list changed, and quoting the mainline there would have
-been a claim about a tree that did not yet carry the file.
+The reference is `HEAD` rather than `origin/main` because the branch this
+paragraph is on is where the list last changed, and quoting the mainline there
+would be a claim about a tree that does not yet carry the file.
 
-That command finds seven lines and the published set is larger, in two ways it
+That command finds ten lines and the published set is larger, in two ways it
 cannot show.
 
 Two jobs carry a matrix, so each of those names expands into one check run per
@@ -100,6 +103,28 @@ requiring only the Linux leg would leave that promise untested exactly where it
 is most likely to break. Cost of blocking: every red test stops every merge,
 including a merge that would have fixed something else. That cost is the point.
 
+`Lint and format`. Intended to block. Both legs are cheap and both catch the
+class of defect that is otherwise argued about in review instead of decided.
+Cost of blocking: a formatter upgrade can move the tree under a branch that did
+not touch it, which is why the version is pinned exactly rather than by range,
+and an upgrade is then a change with a diff somebody chose to make.
+
+`Type check`. Intended to block. The argument for it on this board is the axis
+order defect, which produces a plausible wrong picture rather than a crash. Cost
+of blocking: it covers what `files` under `[tool.mypy]` names and not the test
+suite, so requiring it protects the model and leaves the suite where issue #56
+found it, and a reader who takes the green row for whole-tree coverage has read
+more into it than it says.
+
+`Docs format`. Intended to block. It refuses four properties of the stored bytes
+of tracked Markdown, each of which is invisible to the person who writes it and
+visible to everyone who reads the next diff. Cost of blocking: it is the check
+most likely to stop a change for a reason unrelated to it, because the defects
+it names arrive from an editor's settings rather than from anything anybody
+decided. It is also the narrowest of the three, and what it does not judge is
+written at the top of `tools/docs_format.py` rather than left to be inferred
+from a green row.
+
 `Locked dependencies`. Intended to block. A merged change whose lockfile has
 drifted makes the next clean clone install a graph nobody tested, and the drift
 is cheap to fix at the moment it is noticed and awkward once it is on the
@@ -144,9 +169,6 @@ code scanning row is a view of the same findings.
 Listed here because a configuration written today would not find them, and
 because the names are already fixed by the issues that own them. Each of these is
 a name the board intends to publish and does not:
-
-`Lint and format`, `Type check` and `Docs format`, from issue #17. All three
-intended to block.
 
 `Analyze (python)` and `Enforce greppable invariants`, from issue #19. Both
 intended to block. The second one is where several of this board's own rules are
