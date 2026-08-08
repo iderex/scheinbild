@@ -34,20 +34,27 @@ enforces the shape of the change and not that anybody read it.
 
 Derived from the workflow files rather than remembered:
 
-    git grep -n '^    name:' origin/main -- .github/workflows
-    origin/main:.github/workflows/dco.yml:30:    name: DCO sign-off
-    origin/main:.github/workflows/install.yml:40:    name: Install and import (${{ matrix.os }})
-    origin/main:.github/workflows/locked-dependencies.yml:43:    name: Locked dependencies
-    origin/main:.github/workflows/scorecard.yml:50:    name: Scorecard analysis
-    origin/main:.github/workflows/unicode-guard.yml:27:    name: Reject Trojan Source Unicode
-    origin/main:.github/workflows/zizmor.yml:44:    name: Audit workflows (zizmor)
+    git grep -n '^    name:' HEAD -- .github/workflows
+    HEAD:.github/workflows/dco.yml:30:    name: DCO sign-off
+    HEAD:.github/workflows/install.yml:42:    name: Install and import (${{ matrix.os }})
+    HEAD:.github/workflows/locked-dependencies.yml:43:    name: Locked dependencies
+    HEAD:.github/workflows/scorecard.yml:50:    name: Scorecard analysis
+    HEAD:.github/workflows/test.yml:51:    name: Test suite (${{ matrix.os }})
+    HEAD:.github/workflows/unicode-guard.yml:27:    name: Reject Trojan Source Unicode
+    HEAD:.github/workflows/zizmor.yml:44:    name: Audit workflows (zizmor)
 
-That command finds six lines and the published set is larger, in two ways it
+The reference is `HEAD` rather than `origin/main` because the branch that added
+`test.yml` is where this list changed, and quoting the mainline there would have
+been a claim about a tree that did not yet carry the file.
+
+That command finds seven lines and the published set is larger, in two ways it
 cannot show.
 
-The install job carries a matrix, so its one name expands into one check run per
+Two jobs carry a matrix, so each of those names expands into one check run per
 platform: `Install and import (ubuntu-latest)`, `Install and import
-(macos-latest)` and `Install and import (windows-latest)`.
+(macos-latest)`, `Install and import (windows-latest)`, `Test suite
+(ubuntu-latest)`, `Test suite (macos-latest)` and `Test suite
+(windows-latest)`.
 
 One job has no display name at all, deliberately, so no line of the output above
 belongs to it:
@@ -79,6 +86,15 @@ for a reason unrelated to the change, because it is the one that notices a
 platform difference, so blocking on it will occasionally stop work that is
 correct. That cost is accepted. The alternative is a green pull request that
 means less than it appears to.
+
+`Test suite (ubuntu-latest)`, `Test suite (macos-latest)`, `Test suite
+(windows-latest)`. All three intended to block, as three separate requirements
+for the same reason the install legs are three. The headless and no elevation
+promise is a claim about three platforms, and Windows is where a suite quietly
+starts wanting a privilege it was promised not to need, so a configuration
+requiring only the Linux leg would leave that promise untested exactly where it
+is most likely to break. Cost of blocking: every red test stops every merge,
+including a merge that would have fixed something else. That cost is the point.
 
 `Locked dependencies`. Intended to block. A merged change whose lockfile has
 drifted makes the next clean clone install a graph nobody tested, and the drift
@@ -124,8 +140,6 @@ code scanning row is a view of the same findings.
 Listed here because a configuration written today would not find them, and
 because the names are already fixed by the issues that own them. Each of these is
 a name the board intends to publish and does not:
-
-`Test suite`, or whatever issue #16 lands as. Intended to block once it exists.
 
 `Lint and format`, `Type check` and `Docs format`, from issue #17. All three
 intended to block.
