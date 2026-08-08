@@ -260,8 +260,8 @@ that changes a model parameter after the freeze is not a normal patch, and what
 happens to such a change is part of what is still open.
 
 The [DCO](DCO) text the trailer refers to speaks of the open source licence
-indicated in the file. This repository has no licence yet, which is entry 1 in
-issue #1 and is also unanswered, so that clause currently points at nothing. The
-text is reproduced verbatim because it is a standard document and editing it
-would make it something else. This paragraph is the disclosure rather than a
-repair.
+indicated in the file. That licence is AGPL-3.0 and its text is in
+[LICENSE](LICENSE), so the clause points at something. Until entry 1 of issue #1
+was answered it pointed at nothing, and this paragraph said so. The DCO text
+itself is reproduced verbatim because it is a standard document and editing it
+would make it something else.
