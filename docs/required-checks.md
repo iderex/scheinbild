@@ -42,6 +42,8 @@ Derived from the workflow files rather than remembered:
     HEAD:.github/workflows/install.yml:42:    name: Install and import (${{ matrix.os }})
     HEAD:.github/workflows/locked-dependencies.yml:43:    name: Locked dependencies
     HEAD:.github/workflows/scorecard.yml:50:    name: Scorecard analysis
+    HEAD:.github/workflows/static-analysis.yml:41:    name: Analyze (${{ matrix.language }})
+    HEAD:.github/workflows/static-analysis.yml:73:    name: Enforce greppable invariants
     HEAD:.github/workflows/test.yml:51:    name: Test suite (${{ matrix.os }})
     HEAD:.github/workflows/unicode-guard.yml:27:    name: Reject Trojan Source Unicode
     HEAD:.github/workflows/zizmor.yml:44:    name: Audit workflows (zizmor)
@@ -50,14 +52,15 @@ The reference is `HEAD` rather than `origin/main` because the branch this
 paragraph is on is where the list last changed, and quoting the mainline there
 would be a claim about a tree that does not yet carry the file.
 
-That command finds ten lines and the published set is larger, in two ways it
-cannot show.
+That command finds twelve lines and the published set differs from it, in two
+ways it cannot show.
 
-Two jobs carry a matrix, so each of those names expands into one check run per
-platform: `Install and import (ubuntu-latest)`, `Install and import
+Three jobs carry a matrix, so each of those names expands into one check run per
+matrix leg: `Install and import (ubuntu-latest)`, `Install and import
 (macos-latest)`, `Install and import (windows-latest)`, `Test suite
-(ubuntu-latest)`, `Test suite (macos-latest)` and `Test suite
-(windows-latest)`.
+(ubuntu-latest)`, `Test suite (macos-latest)`, `Test suite (windows-latest)` and
+`Analyze (python)`. The last of those has one leg today, so its name expands to
+one row and would gain a second the day a language is added to it.
 
 One job has no display name at all, deliberately, so no line of the output above
 belongs to it:
