@@ -151,6 +151,24 @@ indented or fenced. Why it stops there is written at the top of
 copy, which is what keeps a checkout with different line endings from reporting
 every document in the tree as broken.
 
+`Enforce greppable invariants`. Three rules that are properties of the source
+text rather than of its behaviour: the forward model and the standard analysis
+may not import each other, no module level random state, and no plotting import
+before the backend is forced. Red means one of them was broken, and the message
+names the rule and what failure it prevents rather than the pattern it matched.
+Reproduce with `python -m tools.invariants src`.
+
+The scope is `src`. The suite is not read, and neither is `tools/`, for reasons
+written at the top of `tools/invariants.py`. A fourth rule named in issue #19,
+no bare numeric literal outside the constant table, is not enforced: as a text
+rule it refuses thirteen sites in the tree that the decision it comes from
+excludes by name, and issue #58 holds the measurement and the answers. A green
+row here says nothing about that rule.
+
+`Analyze (python)`. The standard code scanning analysis. On a numerical board
+its findings will mostly be about file handling and deserialisation rather than
+about the physics, so a quiet report is not a statement about the model.
+
 `Locked dependencies`. Two properties. The lockfile agrees with the dependencies
 declared in `pyproject.toml`, and installation in the gate resolves nothing and
 installs exactly what the lockfile says. Red means one of the two is false, and

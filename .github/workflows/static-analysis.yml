@@ -1,0 +1,108 @@
+# Static analysis of the source (#19).
+#
+# Two jobs, two check-run names:
+#
+#     Analyze (python)
+#     Enforce greppable invariants
+#
+# The first is the standard code scanning analysis. On a numerical board its
+# findings will mostly be about file handling and deserialisation rather than
+# about the physics. That is the correct expectation and it is written here so
+# that nobody reads a quiet report as a statement about the model.
+#
+# The second is the one that matters more on this board. Some of its rules are
+# properties of the source text rather than of its behaviour, and a rule of that
+# shape can be decided by reading the source. Which rules those are, what each
+# one prevents, and which of them is deliberately not here, are at the top of
+# tools/invariants.py rather than restated in this file, because a list in two
+# places drifts against the one that decides.
+#
+# Hardened like the rest of the workflows here: actions SHA-pinned with a version
+# comment, checkout with persist-credentials false, deny-all at the workflow
+# level with the scopes granted per job.
+name: Static analysis
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  analyze:
+    # The language is part of the check-run name, so this reads as
+    # "Analyze (python)". Set explicitly for the reason every name here is.
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      # The analysis publishes its findings to code scanning, which is the one
+      # write this workflow needs and it is granted on this job alone.
+      security-events: write
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            build-mode: none
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@5595ccaf912efad79be6eef63a5619ff05969be3 # v4.37.6
+        with:
+          category: /language:${{ matrix.language }}
+
+  invariants:
+    name: Enforce greppable invariants
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+
+      - name: Enforce greppable invariants
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The scope is on the command line rather than inside the tool, so a
+          # run that read fewer files than a reader thinks is a run whose
+          # command says so. The tool prints what it examined and which rules it
+          # ran, green or red, for the same reason.
+          #
+          # The exit status is read rather than treated as one thing. One is a
+          # refusal, anything else is a tool that reached no verdict, and
+          # printing the same message under both would tell a reader to go and
+          # repair source when what is broken is the check.
+          status=0
+          uv run --locked python -m tools.invariants src || status=$?
+          if [ "$status" -eq 1 ]; then
+            echo "::error::A greppable invariant refused a subject. The annotations above name the rule, the file and the line, and each says what failure the rule prevents. The rules are at the top of tools/invariants.py. Reproduce with: python -m tools.invariants src"
+            exit 1
+          elif [ "$status" -ne 0 ]; then
+            echo "::error::The invariant checker did not run to a verdict, so nothing here says whether the source holds these rules. The output above is the failure, and it is not an invariant finding."
+            exit "$status"
+          fi
