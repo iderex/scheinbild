@@ -47,6 +47,7 @@ can edit and commit.
 """
 
 import argparse
+import os
 import subprocess
 import sys
 
@@ -72,7 +73,7 @@ class Defect:
         self.detail = detail
 
     def __str__(self) -> str:
-        where = self.line
+        where = self.path if self.line is None else f"{self.path}:{self.line}"
         return f"{where}: {self.rule}: {self.detail}"
 
 
@@ -89,7 +90,7 @@ def tracked_documents() -> list[str]:
         text=True,
         check=True,
     )
-    return listed.stdout.split(  )
+    return listed.stdout
 
 
 def stored_bytes(path: str) -> bytes:

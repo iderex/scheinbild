@@ -8,7 +8,7 @@ document is the record of which of those ticks were meant to be able to stop a
 merge, so that whoever configures the protection has a list to configure from, and
 so that a later reader can compare what is required against what was meant to be.
 
-Nothing here changes any repository setting.  This document has no force.
+Nothing here changes any repository setting. This document has no force. 
 
 ## What is configured today
 
