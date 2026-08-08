@@ -53,11 +53,10 @@ On Windows:
     .venv\Scripts\python -W error -m unittest discover --start-directory tests --top-level-directory .
 
 The runner is `unittest` from the standard library, so the suite needs no
-package the install above did not already give you. Nothing in the default suite
-imports either of this repository's packages today, so the command also runs on
-a clone where the install has not been done at all. That is a property of what
-the suite currently holds and not a promise about what it will hold, and the
-reasoning behind the runner is in [tests/README.md](tests/README.md).
+package the install above did not already give you. It does need the install
+itself: the suite has tests that import `scheinbild_model`, and on a clone where
+nothing has been installed those fail to import rather than fail an assertion.
+The reasoning behind the runner is in [tests/README.md](tests/README.md).
 
 Three parts of that command line are load bearing. A run without them passes and
 means less, and the summary line looks the same either way.
