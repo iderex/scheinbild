@@ -19,9 +19,17 @@ readme = "README.md"
 # environment that works until the last digits matter.
 requires-python = "==3.14.*"
 
-# Empty on purpose. The model has no runtime dependency yet, and every one it
-# gains arrives with the lockfile that pins it.
-dependencies = []
+# One runtime dependency, pinned exactly rather than by range. The reason is the
+# same as the interpreter pin: a run that produces a published number has to be
+# repeatable, and a range is not a pin. Every dependency arrives with the
+# lockfile entry that pins it.
+#
+# Why this one is here is argued in docs/decisions/implementation-means.md and in
+# docs/decisions/spectrogram-type.md. A spectrogram is intensity over two grids,
+# and the alternative to an array library is an apparatus this repository would
+# have to write and maintain in order to do arithmetic that is not the subject of
+# the board.
+dependencies = ["numpy==2.3.5"]
 
 # No license field. Which licence this repository carries is entry 1 in issue
 # #1 and is not settled, and a guess here would be a licence claim rather than
