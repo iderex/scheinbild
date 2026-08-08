@@ -6,11 +6,22 @@ This repository is a simulation and an analysis. It is not a service, it holds
 no credentials, and it opens no ports. Listing generic categories here would
 describe a threat model this project does not have.
 
-The surface that is real is the file reader. Code here ingests a spectrogram
+The surface that is real is the file reader. Code here will ingest a spectrogram
 file, a run manifest and a table of atomic data, and a reader that parses an
 attacker-supplied file is the one place in this tree where hostile bytes meet
 code. A crafted file that crashes the reader, exhausts memory, or causes the
 reader to execute anything, is a vulnerability in this repository.
+
+No such reader exists yet, and this document is written before one does rather
+than after. What the tree holds today is two packages with no code in them
+beyond the sentences that say what they are for, and a test suite:
+
+    git grep -c 'def ' -- src ; echo "exit=$?"
+    exit=1
+
+So a report against this repository today is a report about the documents, the
+workflows or the suite. The paragraph above is where the surface will be, and it
+is here so that whoever adds the reader has already read what it is for.
 
 The second surface is a run that sends something off the operator's machine.
 Personal data and experimental data are meant to stay on the machine they were

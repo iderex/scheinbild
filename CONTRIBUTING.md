@@ -44,13 +44,44 @@ It fails rather than quietly updating the lockfile.
 
 ## Run the suite
 
-There is no suite yet.
+On Linux and macOS:
 
-That is stated as a fact rather than left for you to discover. The test harness,
-and the proof that it can refuse a property rather than merely observe one, is
-issue #15, and until it lands there is no command here to give you. This section
-gets the command when the harness does. Nothing in this file describes a suite
-that does not exist.
+    .venv/bin/python -W error -m unittest discover --start-directory tests --top-level-directory .
+
+On Windows:
+
+    .venv\Scripts\python -W error -m unittest discover --start-directory tests --top-level-directory .
+
+The runner is `unittest` from the standard library, so the suite needs no
+package the install above did not already give you. Nothing in the default suite
+imports either of this repository's packages today, so the command also runs on
+a clone where the install has not been done at all. That is a property of what
+the suite currently holds and not a promise about what it will hold, and the
+reasoning behind the runner is in [tests/README.md](tests/README.md).
+
+Three parts of that command line are load bearing. A run without them passes and
+means less, and the summary line looks the same either way.
+
+`-W error` makes a warning fail the run. It has to be on the command line and
+cannot be set from inside the suite, because the runner applies its own warning
+filter around every test and discards one set at import time. The suite carries
+a test that fails when the option is missing, so a run in the weaker mode says
+so rather than passing quietly.
+
+`--start-directory tests` is the whole of the default suite. A test that needs
+something this project promises you will not need, a display or an elevated
+privilege, goes in a separate directory whose name states that requirement, and
+discovery started here cannot reach it.
+
+`--top-level-directory .` is what lets the runner import the `tests` package, and
+importing that package is what installs the policy the suite runs under: the
+plotting backend forced to a non interactive one, and a network connection
+refused rather than skipped. Each part of that policy has a test beside it that
+fails when the part is removed.
+
+Run it yourself before you push. No check on a pull request runs this suite
+today, which the next section says again where it lists what the gate does, so a
+pull request that is green here is a pull request whose suite nobody ran.
 
 ## What the gate checks
 
@@ -107,6 +138,23 @@ One workflow is deliberately absent from this list. `Scorecard analysis` runs on
 `main`, on a schedule and when the ruleset changes, and has no pull request
 trigger, so your pull request will not show it. What this section covers is what
 your own pull request publishes.
+
+No check above runs the test suite. Not one of these names is the suite, no
+workflow in the tree invokes the runner, and the section above therefore asks you
+to run it yourself:
+
+    git grep -n 'unittest' -- .github/workflows ; echo "exit=$?"
+    exit=1
+
+The workflow that will publish the suite under a name a rule can require is
+issue #16. Until it lands, the gate says that the tree installs, imports, locks
+and signs, and says nothing at all about whether the tests pass.
+
+None of the names above stops a merge either. The ruleset on the default branch
+carries no required status check, so a red row and a green one are the same row
+to the merge button. Which of them were meant to block, and what the setting
+would be, is written down in
+[docs/required-checks.md](docs/required-checks.md).
 
 ## What a change to a frozen parameter costs
 
