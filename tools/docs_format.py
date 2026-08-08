@@ -47,7 +47,6 @@ can edit and commit.
 """
 
 import argparse
-import os
 import subprocess
 import sys
 
@@ -90,7 +89,7 @@ def tracked_documents() -> list[str]:
         text=True,
         check=True,
     )
-    return listed.stdout
+    return listed.stdout.split()
 
 
 def stored_bytes(path: str) -> bytes:

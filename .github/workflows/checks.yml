@@ -143,7 +143,18 @@ jobs:
           # what keeps a Windows contributor from being told that every document
           # in the tree is broken on a tree they have not modified. The
           # interpreter is the one uv installs from the pin in pyproject.toml.
-          if ! uv run --locked python -m tools.docs_format --check; then
+          # The exit status is read rather than treated as one thing. A checker
+          # that crashed and a checker that found a defect are different
+          # findings, and printing the repair advice under both tells a reader
+          # to go and fix a document when what is broken is the check. This is
+          # here because the deliberate failure that proved this leg produced
+          # exactly that: a traceback under a message about formatting.
+          status=0
+          uv run --locked python -m tools.docs_format --check || status=$?
+          if [ "$status" -eq 1 ]; then
             echo "::error::A tracked document has a formatting defect. The lines above name the file, the line and the rule. This job does not rewrite your branch. Fix the repairable ones with: python -m tools.docs_format --fix"
             exit 1
+          elif [ "$status" -ne 0 ]; then
+            echo "::error::The document checker did not run to a verdict, so nothing here says whether the documents are clean. The output above is the failure. This is not a formatting finding and there is nothing to repair in a document until it is."
+            exit "$status"
           fi
