@@ -42,6 +42,8 @@ Derived from the workflow files rather than remembered:
     HEAD:.github/workflows/install.yml:42:    name: Install and import (${{ matrix.os }})
     HEAD:.github/workflows/locked-dependencies.yml:43:    name: Locked dependencies
     HEAD:.github/workflows/scorecard.yml:50:    name: Scorecard analysis
+    HEAD:.github/workflows/static-analysis.yml:41:    name: Analyze (${{ matrix.language }})
+    HEAD:.github/workflows/static-analysis.yml:73:    name: Enforce greppable invariants
     HEAD:.github/workflows/test.yml:51:    name: Test suite (${{ matrix.os }})
     HEAD:.github/workflows/unicode-guard.yml:27:    name: Reject Trojan Source Unicode
     HEAD:.github/workflows/zizmor.yml:44:    name: Audit workflows (zizmor)
@@ -50,14 +52,15 @@ The reference is `HEAD` rather than `origin/main` because the branch this
 paragraph is on is where the list last changed, and quoting the mainline there
 would be a claim about a tree that does not yet carry the file.
 
-That command finds ten lines and the published set is larger, in two ways it
-cannot show.
+That command finds twelve lines and the published set differs from it, in two
+ways it cannot show.
 
-Two jobs carry a matrix, so each of those names expands into one check run per
-platform: `Install and import (ubuntu-latest)`, `Install and import
+Three jobs carry a matrix, so each of those names expands into one check run per
+matrix leg: `Install and import (ubuntu-latest)`, `Install and import
 (macos-latest)`, `Install and import (windows-latest)`, `Test suite
-(ubuntu-latest)`, `Test suite (macos-latest)` and `Test suite
-(windows-latest)`.
+(ubuntu-latest)`, `Test suite (macos-latest)`, `Test suite (windows-latest)` and
+`Analyze (python)`. The last of those has one leg today, so its name expands to
+one row and would gain a second the day a language is added to it.
 
 One job has no display name at all, deliberately, so no line of the output above
 belongs to it:
@@ -125,6 +128,19 @@ decided. It is also the narrowest of the three, and what it does not judge is
 written at the top of `tools/docs_format.py` rather than left to be inferred
 from a green row.
 
+`Enforce greppable invariants`. Intended to block. This is where several of this
+board's own rules are refused, including the import boundary in
+[decisions/model-analysis-boundary.md](decisions/model-analysis-boundary.md), so a
+merge possible while it is red is a merge possible while those rules are off.
+Cost of blocking: it reads `src` and nothing else, and one of the four rules
+issue #19 names is not enforced at all, which issue #58 holds. Requiring it buys
+three rules over two packages and not the fourth, and a reader who takes the row
+for all four has read more into it than it says.
+
+`Analyze (python)`. Intended to block. Cost of blocking: its query pack moves on
+its own, so it can turn red on a branch that changed nothing, and on this board
+most of what it has to say is about file handling rather than about the model.
+
 `Locked dependencies`. Intended to block. A merged change whose lockfile has
 drifted makes the next clean clone install a graph nobody tested, and the drift
 is cheap to fix at the moment it is noticed and awkward once it is on the
@@ -166,15 +182,16 @@ code scanning row is a view of the same findings.
 
 ## Names that are planned and are not published yet
 
-Listed here because a configuration written today would not find them, and
-because the names are already fixed by the issues that own them. Each of these is
-a name the board intends to publish and does not:
+None today. This section held the names issue #17 and issue #19 had fixed and
+not yet published, and both have landed, so every name the board has settled on
+is in the list above. It is kept rather than deleted because the next issue that
+fixes a name before publishing it belongs here, and a section that exists is
+easier to add a line to than one somebody has to notice is missing.
 
-`Analyze (python)` and `Enforce greppable invariants`, from issue #19. Both
-intended to block. The second one is where several of this board's own rules are
-refused, including the import boundary in
-[decisions/model-analysis-boundary.md](decisions/model-analysis-boundary.md), so a
-merge possible while it is red is a merge possible while those rules are off.
+A name being published is not the same as the rule behind it being enforced. One
+rule issue #19 names has no check at all, which issue #58 holds and which the
+`Enforce greppable invariants` entry above states in place of leaving the row to
+imply otherwise.
 
 ## The assumption this list rests on
 
