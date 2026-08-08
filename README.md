@@ -95,6 +95,37 @@ than fail an assertion, and the failure is about the clone and not about the
 code. The tests of the suite's own policy still import nothing from this
 repository, so a broken install cannot make the harness look broken.
 
+## What leaves this machine
+
+Nothing, unless you run one particular command and answer a question.
+
+No code path a run reaches makes a network call. That is a rule a check refuses
+rather than a promise: `Enforce greppable invariants` reads the forward model and
+the standard analysis and fails on a network capable import in any module except
+the one exit. What that check cannot see is written where it is decided, at the
+top of `tools/invariants.py`.
+
+The one exit is a command of its own:
+
+    .venv/bin/python -m scheinbild_model.publish <spectrogram.npz>
+
+It prints exactly what it would send, which is the file and three fields of
+provenance: the version of the software, the manifest hash and the seeds the run
+consumed. Your username, your hostname, your working directory, your input
+paths, your environment and the time of the run are not among them, and it prints
+that list too. Then it asks, and it stops on any answer other than `yes`.
+
+It is never a consequence of producing a result. Nothing else in the tree reaches
+it, and the suite has a test saying so.
+
+Today it sends nothing at all. Where a run would be published, and by what
+protocol, is not decided on this board, so after you confirm, the command refuses
+and says why. The confirmation, the preview and the allowlist are in place before
+there is a transport rather than being asked for afterwards.
+
+Why each of those is the way it is, including why the timestamp is left out, is
+in [docs/decisions/what-leaves-the-host.md](docs/decisions/what-leaves-the-host.md).
+
 ## The tree
 
     src/scheinbild_model/       the forward model

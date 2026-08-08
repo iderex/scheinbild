@@ -19,6 +19,7 @@ from pathlib import Path
 
 from tools.invariants import (
     RULES,
+    network_refusals,
     plotting_refusals,
     random_state_refusals,
     refusals_for,
@@ -143,6 +144,54 @@ class ThePlottingImportMustComeAfterTheBackendIsForced(unittest.TestCase):
         # would refuse the first line of the only correct pattern there is.
         source = "import matplotlib\n"
         self.assertEqual(list(plotting_refusals(MODEL, source, parsed(source))), [])
+
+
+THE_EXIT = Path("src/scheinbild_model/publish.py")
+
+
+NETWORK_RULE = "no-network-capable-import-outside-the-one-exit"
+
+
+class TheNetworkHasExactlyOneExit(unittest.TestCase):
+    def test_importing_socket_anywhere_else_is_refused(self):
+        found = list(network_refusals(MODEL, parsed("import socket\n")))
+        self.assertEqual(rules(found), [NETWORK_RULE])
+
+    def test_a_client_library_is_refused(self):
+        found = list(network_refusals(MODEL, parsed("import requests\n")))
+        self.assertEqual(rules(found), [NETWORK_RULE])
+
+    def test_a_submodule_is_refused(self):
+        source = "from urllib.request import urlopen\n"
+        found = list(network_refusals(MODEL, parsed(source)))
+        self.assertEqual(rules(found), [NETWORK_RULE])
+
+    def test_an_import_inside_a_function_is_refused_too(self):
+        # The near miss somebody actually writes. Moving the import into the
+        # function that uses it is the ordinary way to make a dependency look
+        # optional, and a rule reading only the top of the file passes it.
+        source = "def fetch():\n    import socket\n\n    return socket\n"
+        found = list(network_refusals(MODEL, parsed(source)))
+        self.assertEqual(rules(found), [NETWORK_RULE])
+
+    def test_the_one_exit_may_import_one(self):
+        found = list(network_refusals(THE_EXIT, parsed("import socket\n")))
+        self.assertEqual(found, [])
+
+    def test_a_file_called_publish_somewhere_else_is_not_the_exit(self):
+        # The exemption is on the path and not on the file name, so a module
+        # called publish.py in another package does not inherit it.
+        elsewhere = Path("src/scheinbild_analysis/publish.py")
+        found = list(network_refusals(elsewhere, parsed("import socket\n")))
+        self.assertEqual(rules(found), [NETWORK_RULE])
+
+    def test_a_name_that_merely_starts_with_a_network_module_is_clean(self):
+        found = list(network_refusals(MODEL, parsed("import sockets_r_us\n")))
+        self.assertEqual(found, [])
+
+    def test_an_ordinary_module_is_clean(self):
+        source = "import json\nfrom pathlib import Path\n"
+        self.assertEqual(list(network_refusals(MODEL, parsed(source))), [])
 
 
 class AFileThatCannotBeReadIsNotAFileThatPassed(unittest.TestCase):
