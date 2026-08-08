@@ -60,6 +60,39 @@ On Windows:
 
 The command prints nothing and exits zero when both packages import.
 
+## Run the suite
+
+On Linux and macOS:
+
+    .venv/bin/python -W error -m unittest discover --start-directory tests --top-level-directory .
+
+On Windows:
+
+    .venv\Scripts\python -W error -m unittest discover --start-directory tests --top-level-directory .
+
+Three parts of that command line are not decoration.
+
+`-W error` makes a warning fail the run. It has to be on the command line and
+cannot be set from inside the suite, because the runner applies its own warning
+filter around every test and discards one set at import time. The suite has a
+test that fails if the option is missing, so a run in the weaker mode says so
+rather than passing quietly.
+
+`--start-directory tests` is the whole of the default suite. A test that needs
+something this suite promises not to need, a display or an elevated privilege,
+goes in a separate directory whose name states that requirement, and discovery
+started here cannot reach it.
+
+`--top-level-directory .` is what lets the runner import the `tests` package, and
+importing that package is what installs the policy the suite runs under: the
+plotting backend forced to a non interactive one, and a network connection
+refused rather than skipped. The policy is in `tests/__init__.py` and each part of
+it has a test next to it.
+
+Nothing in the default suite needs the packages installed today, so it also runs
+on a clone where the install has not been done. That is a property of what the
+suite currently contains rather than a promise about what it will contain.
+
 ## The tree
 
     src/scheinbild_model/       the forward model
