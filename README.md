@@ -89,9 +89,11 @@ plotting backend forced to a non interactive one, and a network connection
 refused rather than skipped. The policy is in `tests/__init__.py` and each part of
 it has a test next to it.
 
-Nothing in the default suite needs the packages installed today, so it also runs
-on a clone where the install has not been done. That is a property of what the
-suite currently contains rather than a promise about what it will contain.
+Do the install above first. The suite has tests that import the forward model,
+so on a clone where nothing has been installed those tests fail to import rather
+than fail an assertion, and the failure is about the clone and not about the
+code. The tests of the suite's own policy still import nothing from this
+repository, so a broken install cannot make the harness look broken.
 
 ## The tree
 
