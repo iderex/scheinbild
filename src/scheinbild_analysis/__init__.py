@@ -13,3 +13,6 @@ to test.
 
 Nothing in this package may import scheinbild_model.
 """
+
+# Deliberate wall crossing, reverted in the next commit.
+import scheinbild_model  # noqa: E402, F401
