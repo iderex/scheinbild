@@ -2,7 +2,7 @@
 
 Some of this board's rules are not about behaviour. They are about what the
 source says, and a rule of that shape can be decided by reading the source
-rather than by running it. Three of them are decided here.
+rather than by running it. Four of them are decided here.
 
 `no-crossing-the-model-analysis-wall`. The standard analysis may not import the
 forward model, and the forward model may not import the analysis. This is the
@@ -16,6 +16,25 @@ random state is state no manifest describes.
 an interactive backend opens a window in a suite that never asked for one, per
 docs/decisions/test-environment.md. A library that has already chosen a backend
 does not choose again, so the choice has to come first in the file.
+
+`no-network-capable-import-outside-the-one-exit`. No code path a normal run
+reaches makes a network call, and publishing off the host is a separate command,
+per docs/decisions/what-leaves-the-host.md. The exit is
+`scheinbild_model/publish.py` and every other module is refused a network capable
+import.
+
+That rule is a floor and its limit is stated where it is decided rather than left
+for a reader to assume. It catches a direct import of a module that can open a
+connection. It does not catch a call reached through something else: an import
+inside a function body is caught, because the reading is of the whole file, but a
+network call made by a dependency this tree imports for another reason is not,
+and neither is one reached by name at runtime. What would go further is an import
+graph over the installed packages, which is a different tool.
+
+The one exit imports nothing from the list either, because it has no transport.
+The exemption is on the file rather than on any import in it, so the day a
+transport lands the exemption is already where it belongs and the rest of the
+tree is unchanged.
 
 ## The fourth rule, and why it is not here
 
@@ -92,6 +111,33 @@ WALLS = {
 }
 
 RANDOM_STATE_FACTORIES = ("default_rng", "RandomState", "Random")
+
+# Importing any of these puts a connection within reach of the module that did
+# it. The list is what the standard library and the common third party clients
+# offer, and it is a floor rather than a proof: a module reaching a network some
+# other way is not caught, which the docstring above says in its own words.
+NETWORK_CAPABLE_MODULES = (
+    "socket",
+    "ssl",
+    "http",
+    "urllib",
+    "ftplib",
+    "imaplib",
+    "poplib",
+    "smtplib",
+    "telnetlib",
+    "xmlrpc",
+    "webbrowser",
+    "requests",
+    "httpx",
+    "aiohttp",
+    "urllib3",
+)
+
+# The one module allowed to reach the network, as a path tail rather than as a
+# module name, so a file somewhere else that happens to be called publish.py is
+# not exempted with it.
+THE_ONE_EXIT = ("scheinbild_model", "publish.py")
 
 
 class Refusal(NamedTuple):
@@ -188,6 +234,32 @@ def random_state_refusals(path: Path, tree: ast.Module) -> Iterator[Refusal]:
                     )
 
 
+def _is_the_one_exit(path: Path) -> bool:
+    return path.parts[-2:] == THE_ONE_EXIT
+
+
+def network_refusals(path: Path, tree: ast.Module) -> Iterator[Refusal]:
+    if _is_the_one_exit(path):
+        return
+    for name, line in _imported_names(tree):
+        reaches = any(
+            name == module or name.startswith(module + ".")
+            for module in NETWORK_CAPABLE_MODULES
+        )
+        if not reaches:
+            continue
+        yield Refusal(
+            "no-network-capable-import-outside-the-one-exit",
+            str(path),
+            line,
+            f"importing {name} puts a connection within reach of a module a run "
+            "can reach. The network has exactly one exit, "
+            f"{'/'.join(THE_ONE_EXIT)}, which the operator invokes on purpose and "
+            "which says what it is about to send before it sends it. See "
+            "docs/decisions/what-leaves-the-host.md.",
+        )
+
+
 def plotting_refusals(path: Path, source: str, tree: ast.Module) -> Iterator[Refusal]:
     forced_on = None
     for number, text in enumerate(source.splitlines(), start=1):
@@ -232,12 +304,14 @@ def refusals_for(path: Path) -> Iterator[Refusal]:
     yield from wall_refusals(path, tree)
     yield from random_state_refusals(path, tree)
     yield from plotting_refusals(path, source, tree)
+    yield from network_refusals(path, tree)
 
 
 RULES = (
     "no-crossing-the-model-analysis-wall",
     "no-global-random-state",
     "no-plotting-import-before-the-backend-is-forced",
+    "no-network-capable-import-outside-the-one-exit",
 )
 
 
