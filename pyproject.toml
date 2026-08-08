@@ -31,9 +31,13 @@ requires-python = "==3.14.*"
 # the board.
 dependencies = ["numpy==2.3.5"]
 
-# No license field. Which licence this repository carries is entry 1 in issue
-# #1 and is not settled, and a guess here would be a licence claim rather than
-# a placeholder.
+# Still no license field, and no longer for the old reason. The licence is
+# AGPL-3.0 and its text is in LICENSE, which answers entry 1 of issue #1 for the
+# repository. The field takes an SPDX identifier, and the two current
+# identifiers for this licence are AGPL-3.0-only and AGPL-3.0-or-later. Nothing
+# in the tree says which of the two holds, because that is stated in a program's
+# own notices and this repository carries none, so either identifier here would
+# decide a question the licence file leaves open.
 
 # Two importable units, not two directories inside one. The wall between the
 # forward model and the standard analysis is meant to become something a check

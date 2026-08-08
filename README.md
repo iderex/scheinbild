@@ -132,3 +132,9 @@ in [docs/decisions/what-leaves-the-host.md](docs/decisions/what-leaves-the-host.
     src/scheinbild_analysis/    the standard analysis
     tests/                      the test suite
     docs/decisions/             the decisions the rest of the board rests on
+
+## License
+
+AGPL-3.0. Copyright 2026 Nils Lehnen.
+
+The full text is in [LICENSE](LICENSE).
