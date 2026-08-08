@@ -1,0 +1,101 @@
+# The test suite, on all three supported platforms (#16).
+#
+# The check names this file publishes are the whole point of it. A branch
+# protection rule matches the literal name of a check run, so a job whose name
+# is left to default is a job whose requirement changes the day somebody adds a
+# display name. Every name here is set explicitly and is meant to be stable:
+#
+#     Test suite (ubuntu-latest)
+#     Test suite (macos-latest)
+#     Test suite (windows-latest)
+#
+# Three platforms rather than one, because the promise in CONTRIBUTING.md is
+# about Linux, macOS and Windows, and a promise tested on one of them is a
+# promise about one of them. Windows earns its place specifically. It is where
+# the virtual environment lays its interpreter out under a different directory,
+# where a path separator and a line ending assumption differ, and where a suite
+# quietly starts wanting a privilege it was promised not to need.
+#
+# The install is from the lockfile rather than a fresh resolve (#18). A green
+# run here is then a statement about the graph a reader gets when they follow
+# the reproduce-a-number instructions, and not about whichever graph the
+# resolver happened to pick this morning.
+#
+# The command is the one the README and CONTRIBUTING.md give an operator, with
+# --verbose added so the run log names the tests it executed rather than
+# printing a row of dots. -W error is part of the documented command and is not
+# decoration: the suite carries a test that fails without it, because a run in
+# the weaker mode is otherwise indistinguishable from a strict one.
+#
+# Hardened like the rest of the workflows here: actions SHA-pinned with a
+# version comment, checkout with persist-credentials false, deny-all at the
+# workflow level with the single read scope granted on the job.
+name: Test suite
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: ["**"]
+
+permissions: {}
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-suite:
+    # The matrix leg is part of the check-run name, so these read as
+    # "Test suite (ubuntu-latest)" and so on.
+    name: Test suite (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    strategy:
+      # One platform failing must not cancel the others. Which platforms are
+      # green is the whole output of this job, and a cancelled leg is not a
+      # green one.
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Nothing here pushes, so do not leave the token in .git/config.
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        # No cache, for the same reason the locked-dependencies job gives: a
+        # restored resolver cache is a place a version that is not in the
+        # lockfile could come from.
+
+      - name: Install the locked graph
+        # uv reads the interpreter pin out of requires-python and fetches a
+        # matching interpreter, so this job restates the version no more than
+        # any other route here does. --locked fails rather than updating the
+        # lockfile, so a run that gets this far installed the committed graph.
+        run: uv sync --locked
+
+      - name: Report the interpreter the suite will run on
+        if: runner.os != 'Windows'
+        shell: bash
+        run: .venv/bin/python -c "import sys; print(sys.version); print(sys.executable)"
+
+      - name: Report the interpreter the suite will run on
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .venv\Scripts\python -c "import sys; print(sys.version); print(sys.executable)"
+
+      - name: Run the suite
+        if: runner.os != 'Windows'
+        shell: bash
+        run: .venv/bin/python -W error -m unittest discover --start-directory tests --top-level-directory . --verbose
+
+      - name: Run the suite
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: .venv\Scripts\python -W error -m unittest discover --start-directory tests --top-level-directory . --verbose

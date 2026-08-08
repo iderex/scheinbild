@@ -78,9 +78,9 @@ plotting backend forced to a non interactive one, and a network connection
 refused rather than skipped. Each part of that policy has a test beside it that
 fails when the part is removed.
 
-Run it yourself before you push. No check on a pull request runs this suite
-today, which the next section says again where it lists what the gate does, so a
-pull request that is green here is a pull request whose suite nobody ran.
+Run it yourself before you push. A pull request also runs it on all three
+platforms, under the check names in the next section, but the run that saves you
+a round trip is the one on your own machine.
 
 ## What the gate checks
 
@@ -103,6 +103,21 @@ notices when a path or an interpreter assumption holds on two platforms and not
 on the third. The job derives the interpreter version out of `requires-python`
 rather than restating it, so a change to the shape of that line stops the job
 instead of testing some other interpreter.
+
+`Test suite (ubuntu-latest)`, `Test suite (macos-latest)` and `Test suite
+(windows-latest)`. On each platform, the suite runs under the command this file
+gives you above, with `--verbose` added so the log names the tests rather than
+printing dots. Red means a test failed, or a warning was raised, on that
+operating system. Three names rather than one, because the promise at the top of
+this file is about three platforms and a suite run on one of them says nothing
+about the other two.
+
+That job installs from `uv.lock` rather than resolving fresh, which is the one
+place it differs from `Install and import`. So a green suite is a statement about
+the locked graph, the one you get from `uv sync --locked` while reproducing a
+number, and a green install is a statement about a fresh resolve, the one you
+get from the install commands above while reading the code. Both are worth
+having and neither implies the other.
 
 `Locked dependencies`. Two properties. The lockfile agrees with the dependencies
 declared in `pyproject.toml`, and installation in the gate resolves nothing and
@@ -138,18 +153,7 @@ One workflow is deliberately absent from this list. `Scorecard analysis` runs on
 trigger, so your pull request will not show it. What this section covers is what
 your own pull request publishes.
 
-No check above runs the test suite. Not one of these names is the suite, no
-workflow in the tree invokes the runner, and the section above therefore asks you
-to run it yourself:
-
-    git grep -n 'unittest' -- .github/workflows ; echo "exit=$?"
-    exit=1
-
-The workflow that will publish the suite under a name a rule can require is
-issue #16. Until it lands, the gate says that the tree installs, imports, locks
-and signs, and says nothing at all about whether the tests pass.
-
-None of the names above stops a merge either. The ruleset on the default branch
+None of the names above stops a merge. The ruleset on the default branch
 carries no required status check, so a red row and a green one are the same row
 to the merge button. Which of them were meant to block, and what the setting
 would be, is written down in

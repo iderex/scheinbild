@@ -9,10 +9,12 @@
 # where the README therefore carries a separate command line, and where a path
 # assumption goes unnoticed on the platform the author does not use.
 #
-# This is NOT the test suite workflow. There is no suite yet, and the workflow
-# that runs one with the check names a ruleset can require is #16. This one
-# answers a narrower question: does the thing install and do both packages
-# import.
+# This is NOT the test suite workflow. That one is test.yml, it publishes the
+# names "Test suite (<platform>)", and it installs from the lockfile. This one
+# answers a narrower question: does a fresh resolve install, and do both
+# packages import. The two are separate because their failures mean different
+# things. A red suite is a defect in the code; a red install here with a green
+# suite there is a defect in what an operator following the README would get.
 #
 # Hardened like the rest of the workflows here: actions SHA-pinned with a
 # version comment, checkout with persist-credentials false, deny-all at the
