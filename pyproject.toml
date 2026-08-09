@@ -93,11 +93,22 @@ select = ["E4", "E7", "E9", "F", "W", "I"]
 # order mistake produces a plausible wrong picture rather than a crash. Static
 # checking catches few of those and the ones it catches are cheap.
 #
-# What `files` leaves out is the test suite, which does not type check today.
-# The count is in issue #56, which holds the work of widening this line, so the
-# gap is a number somebody can act on rather than a silence. Nothing here
-# pretends the suite is covered: a green `Type check` is a statement about what
-# this line names and about nothing else.
+# The suite is in the list as of issue #56, and the argument for it is the same
+# argument one step further on. A test that builds a spectrogram with its axes
+# the wrong way round and then asserts against it agrees with the defect instead
+# of catching it, so the suite is where an axis order mistake would be signed
+# off rather than found.
+#
+# What is still outside is anything discovery cannot reach from `tests`, and
+# there is nothing there today. A green `Type check` is a statement about the
+# three names on this line and about nothing else.
+#
+# The three are also checked in one run rather than three, which is not only
+# tidiness. Neither package ships a `py.typed` marker, so a run given `tests`
+# alone would treat every import of the model as untyped and learn nothing
+# about anything reached through it. `src` being in the same run is what makes
+# the suite's imports resolve to the source. That is why the gate passes no
+# paths on the command line and this line is the whole of the set.
 python_version = "3.14"
 strict = true
-files = ["src", "tools"]
+files = ["src", "tools", "tests"]

@@ -30,6 +30,7 @@ display is a check this suite would have to acquire a display library to make.
 
 import os
 import socket
+from typing import Any, NoReturn
 
 # Forced rather than defaulted. os.environ.setdefault here would honour an
 # interactive backend that happened to be in the environment, which is the one
@@ -54,7 +55,7 @@ _REFUSAL = (
 )
 
 
-def _refuse(sock, address):
+def _refuse(sock: socket.socket, address: object) -> NoReturn:
     # The socket is closed before the refusal is raised. A refused socket is
     # unusable anyway, and a caller inside the standard library that was
     # expecting an OSError does not close it on the way out, which leaves a
@@ -64,11 +65,18 @@ def _refuse(sock, address):
     raise NetworkAccessRefused(f"{_REFUSAL} Address: {address!r}.")
 
 
-def _refuse_connect(self, address, /):
+# The address is `Any` rather than the union the standard library declares. What
+# these two replace is reached with a host and port pair, a path, a tuple with a
+# scope identifier in it and more besides, depending on the family the caller
+# opened, and none of that is read here: the refusal happens before the address
+# is used for anything except being printed back. A narrower annotation would be
+# a claim about which callers are covered, and the point of patching the two
+# methods rather than the callers is that it does not depend on knowing them.
+def _refuse_connect(self: socket.socket, address: Any, /) -> NoReturn:
     _refuse(self, address)
 
 
-def _refuse_connect_ex(self, address, /):
+def _refuse_connect_ex(self: socket.socket, address: Any, /) -> NoReturn:
     _refuse(self, address)
 
 
@@ -81,5 +89,20 @@ def _refuse_connect_ex(self, address, /):
 # lookup on its own is not refused here, because socket.getaddrinfo is reached
 # by code that is doing nothing of the kind, and a suite that cannot resolve a
 # name fails in places that have no network in them at all.
-socket.socket.connect = _refuse_connect
-socket.socket.connect_ex = _refuse_connect_ex
+#
+# `method-assign` is suppressed rather than avoided, and the two lines are the
+# whole mechanism of the refusal. Replacing a method on a class is what the
+# checker is warning about in general, and here it is the point: the standard
+# library builds `socket.socket` itself, so a subclass reaches nothing, and a
+# wrapper around every caller is the enumeration the comment above says this
+# arrangement exists not to need. The suppression names the two codes the
+# replacement raises and no others, `method-assign` for replacing a method at
+# all and `assignment` for the signature not matching the one being replaced, so
+# anything else that goes wrong on these lines is still reported.
+#
+# `setattr` would silence the same error without a suppression and was not used
+# for that reason. It performs the identical assignment and hides it from the
+# checker instead of declaring it, which turns a suppression a reader can see
+# into one nobody can.
+socket.socket.connect = _refuse_connect  # type: ignore[method-assign,assignment]
+socket.socket.connect_ex = _refuse_connect_ex  # type: ignore[method-assign,assignment]

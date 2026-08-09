@@ -25,7 +25,7 @@ import math
 import unittest
 
 from scheinbild_model.constants import CONSTANTS
-from scheinbild_model.manifest import Manifest, ParameterNotInManifest
+from scheinbild_model.manifest import Manifest, ParameterNotInManifest, ParameterValue
 from scheinbild_model.pulse import (
     BANDWIDTH,
     CENTRAL_ENERGY,
@@ -41,7 +41,7 @@ from scheinbild_model.pulse import (
 # made at 105.2 eV. The duration and the grid are round numbers chosen so that
 # the grid comfortably holds the pulse, and neither is a value taken from any
 # source.
-_BASE = {
+_BASE: dict[str, ParameterValue] = {
     CENTRAL_ENERGY: 105.2,
     DURATION: 200.0,
     CHIRP: 0.0,
@@ -49,7 +49,7 @@ _BASE = {
 }
 
 
-def _manifest(**overrides) -> Manifest:
+def _manifest(**overrides: ParameterValue) -> Manifest:
     parameters = dict(_BASE)
     parameters.update(overrides)
     return Manifest.of(parameters=parameters, seeds={}, code_version="0.0.0")
@@ -74,7 +74,7 @@ def _hbar_in_electronvolt_attosecond() -> float:
 class ThePulseIsBuiltFromAManifestAndNothingElse(unittest.TestCase):
     """The model reads a parameter from the manifest or it does not read it."""
 
-    def test_a_pulse_is_built_from_a_manifest_alone(self):
+    def test_a_pulse_is_built_from_a_manifest_alone(self) -> None:
         # The constructor takes one argument and it is the manifest. There is
         # no configuration object, no keyword with a default, and no module
         # level value to fall back on.
@@ -82,7 +82,7 @@ class ThePulseIsBuiltFromAManifestAndNothingElse(unittest.TestCase):
         self.assertEqual(pulse.central_energy_electronvolt, 105.2)
         self.assertEqual(pulse.duration_attosecond, 200.0)
 
-    def test_a_parameter_the_manifest_does_not_carry_stops_the_run(self):
+    def test_a_parameter_the_manifest_does_not_carry_stops_the_run(self) -> None:
         for missing in (CENTRAL_ENERGY, DURATION, CHIRP, TIME_GRID_HALF_WIDTH):
             with self.subTest(missing=missing):
                 parameters = {
@@ -94,14 +94,14 @@ class ThePulseIsBuiltFromAManifestAndNothingElse(unittest.TestCase):
                 with self.assertRaises(ParameterNotInManifest):
                     Pulse(manifest)
 
-    def test_a_parameter_that_is_not_a_quantity_is_refused(self):
+    def test_a_parameter_that_is_not_a_quantity_is_refused(self) -> None:
         # A manifest may legitimately hold a string or a boolean, so the pulse
         # refuses one where it wanted a number rather than letting it through
         # into the arithmetic.
         with self.assertRaises(PulseRefused):
             Pulse(_manifest(**{DURATION: "200"}))
 
-    def test_a_pulse_with_no_extent_is_refused(self):
+    def test_a_pulse_with_no_extent_is_refused(self) -> None:
         for override in (
             {CENTRAL_ENERGY: 0.0},
             {CENTRAL_ENERGY: -105.2},
@@ -121,7 +121,7 @@ class TheWidthsAreTheWidthsTheyAreCalled(unittest.TestCase):
     of code, and it does not show up as a wrong shape.
     """
 
-    def test_the_intensity_envelope_is_half_at_half_the_duration(self):
+    def test_the_intensity_envelope_is_half_at_half_the_duration(self) -> None:
         pulse = Pulse(_manifest())
         self.assertAlmostEqual(
             pulse.intensity_envelope(pulse.duration_attosecond / 2.0),
@@ -134,11 +134,11 @@ class TheWidthsAreTheWidthsTheyAreCalled(unittest.TestCase):
             places=12,
         )
 
-    def test_the_envelope_peaks_at_the_arrival_time(self):
+    def test_the_envelope_peaks_at_the_arrival_time(self) -> None:
         pulse = Pulse(_manifest())
         self.assertEqual(pulse.intensity_envelope(0.0), 1.0)
 
-    def test_the_spectrum_is_half_at_half_the_bandwidth_from_the_centre(self):
+    def test_the_spectrum_is_half_at_half_the_bandwidth_from_the_centre(self) -> None:
         pulse = Pulse(_manifest())
         half = pulse.bandwidth_electronvolt / 2.0
         for offset in (half, -half):
@@ -151,7 +151,7 @@ class TheWidthsAreTheWidthsTheyAreCalled(unittest.TestCase):
                     places=12,
                 )
 
-    def test_the_spectrum_peaks_at_the_central_energy(self):
+    def test_the_spectrum_peaks_at_the_central_energy(self) -> None:
         pulse = Pulse(_manifest())
         self.assertEqual(
             pulse.spectral_intensity(pulse.central_energy_electronvolt), 1.0
@@ -161,7 +161,7 @@ class TheWidthsAreTheWidthsTheyAreCalled(unittest.TestCase):
 class TheUnchirpedPulseIsTransformLimited(unittest.TestCase):
     """The analytic relation, checked against the table and not against itself."""
 
-    def test_the_product_of_the_two_widths_is_the_transform_limit(self):
+    def test_the_product_of_the_two_widths_is_the_transform_limit(self) -> None:
         for duration in (50.0, 200.0, 800.0):
             with self.subTest(duration=duration):
                 pulse = Pulse(
@@ -180,7 +180,9 @@ class TheUnchirpedPulseIsTransformLimited(unittest.TestCase):
                     f"{TRANSFORM_LIMIT * _hbar_in_electronvolt_attosecond()}",
                 )
 
-    def test_a_two_hundred_attosecond_pulse_is_about_nine_electronvolts_wide(self):
+    def test_a_two_hundred_attosecond_pulse_is_about_nine_electronvolts_wide(
+        self,
+    ) -> None:
         # Not a tolerance on a physical value. The assertion is that the
         # bandwidth is around nine electronvolts rather than nine tenths of one
         # or ninety, which is the size of every mistake this arithmetic can
@@ -189,7 +191,7 @@ class TheUnchirpedPulseIsTransformLimited(unittest.TestCase):
         self.assertGreater(pulse.bandwidth_electronvolt, 9.0)
         self.assertLess(pulse.bandwidth_electronvolt, 9.3)
 
-    def test_a_shorter_pulse_is_broader(self):
+    def test_a_shorter_pulse_is_broader(self) -> None:
         short = Pulse(_manifest(**{DURATION: 100.0}))
         long = Pulse(_manifest(**{DURATION: 400.0, TIME_GRID_HALF_WIDTH: 1200.0}))
         self.assertGreater(short.bandwidth_electronvolt, long.bandwidth_electronvolt)
@@ -198,7 +200,7 @@ class TheUnchirpedPulseIsTransformLimited(unittest.TestCase):
 class TheChirpIsPresentAndDoesWhatAChirpDoes(unittest.TestCase):
     """Carried from the start so it can be swept after the freeze."""
 
-    def test_a_chirp_broadens_the_spectrum_without_moving_the_envelope(self):
+    def test_a_chirp_broadens_the_spectrum_without_moving_the_envelope(self) -> None:
         unchirped = Pulse(_manifest())
         chirped = Pulse(_manifest(**{CHIRP: 0.05}))
         self.assertGreater(
@@ -212,14 +214,14 @@ class TheChirpIsPresentAndDoesWhatAChirpDoes(unittest.TestCase):
                     unchirped.intensity_envelope(time),
                 )
 
-    def test_a_chirp_of_either_sign_broadens_the_spectrum_the_same(self):
+    def test_a_chirp_of_either_sign_broadens_the_spectrum_the_same(self) -> None:
         up = Pulse(_manifest(**{CHIRP: 0.05}))
         down = Pulse(_manifest(**{CHIRP: -0.05}))
         self.assertAlmostEqual(
             up.bandwidth_electronvolt, down.bandwidth_electronvolt, places=12
         )
 
-    def test_a_chirped_pulse_is_above_the_transform_limit(self):
+    def test_a_chirped_pulse_is_above_the_transform_limit(self) -> None:
         chirped = Pulse(_manifest(**{CHIRP: 0.05}))
         product = (
             chirped.bandwidth_electronvolt * chirped.duration_attosecond
@@ -230,7 +232,7 @@ class TheChirpIsPresentAndDoesWhatAChirpDoes(unittest.TestCase):
 class ADurationAndABandwidthThatCannotGoTogetherAreRefused(unittest.TestCase):
     """The refusal names both numbers, because either one could be the mistake."""
 
-    def test_a_bandwidth_below_the_transform_limit_is_refused(self):
+    def test_a_bandwidth_below_the_transform_limit_is_refused(self) -> None:
         # Half the bandwidth a 200 as pulse can have. No optics make it.
         with self.assertRaises(PulseRefused) as refusal:
             Pulse(_manifest(**{BANDWIDTH: 4.5}))
@@ -247,7 +249,7 @@ class ADurationAndABandwidthThatCannotGoTogetherAreRefused(unittest.TestCase):
 
     def test_a_bandwidth_above_the_limit_but_not_matching_the_chirp_is_refused(
         self,
-    ):
+    ) -> None:
         # Twice the transform limited bandwidth is a pulse that exists, and it
         # is not this one: the chirp is zero, so this manifest carries one
         # number too many.
@@ -257,14 +259,14 @@ class ADurationAndABandwidthThatCannotGoTogetherAreRefused(unittest.TestCase):
         self.assertIn("18.3", message)
         self.assertIn("one too many", message)
 
-    def test_a_bandwidth_that_agrees_is_accepted(self):
+    def test_a_bandwidth_that_agrees_is_accepted(self) -> None:
         # The control. Without it every refusal above would also pass against a
         # constructor that refused any supplied bandwidth at all.
         derived = Pulse(_manifest()).bandwidth_electronvolt
         pulse = Pulse(_manifest(**{BANDWIDTH: derived}))
         self.assertAlmostEqual(pulse.bandwidth_electronvolt, derived, places=12)
 
-    def test_a_manifest_with_no_bandwidth_derives_one(self):
+    def test_a_manifest_with_no_bandwidth_derives_one(self) -> None:
         # The ordinary case. A manifest that does not state the bandwidth is
         # complete rather than short of a parameter, because the bandwidth
         # follows from the duration and the chirp.
@@ -275,14 +277,14 @@ class ADurationAndABandwidthThatCannotGoTogetherAreRefused(unittest.TestCase):
 class AGridTooShortToHoldThePulseIsRefused(unittest.TestCase):
     """Truncation is a step in time and structure in the spectrum."""
 
-    def test_a_grid_that_cuts_the_envelope_is_refused(self):
+    def test_a_grid_that_cuts_the_envelope_is_refused(self) -> None:
         with self.assertRaises(PulseRefused) as refusal:
             Pulse(_manifest(**{TIME_GRID_HALF_WIDTH: 300.0}))
         message = str(refusal.exception)
         self.assertIn("300.0", message)
         self.assertIn("too short", message)
 
-    def test_the_refusal_says_what_grid_would_work(self):
+    def test_the_refusal_says_what_grid_would_work(self) -> None:
         pulse = Pulse(_manifest())
         smallest = pulse.smallest_time_grid_half_width_attosecond()
         # Just inside the number the refusal offers is refused, and just
@@ -292,7 +294,7 @@ class AGridTooShortToHoldThePulseIsRefused(unittest.TestCase):
             Pulse(_manifest(**{TIME_GRID_HALF_WIDTH: smallest * 0.999}))
         Pulse(_manifest(**{TIME_GRID_HALF_WIDTH: smallest * 1.001}))
 
-    def test_a_longer_pulse_needs_a_longer_grid(self):
+    def test_a_longer_pulse_needs_a_longer_grid(self) -> None:
         short = Pulse(_manifest())
         long = Pulse(_manifest(**{DURATION: 400.0, TIME_GRID_HALF_WIDTH: 1200.0}))
         self.assertGreater(

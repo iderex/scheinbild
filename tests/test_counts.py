@@ -16,6 +16,7 @@ a transposed result is a length mismatch rather than a shape that happens to fit
 import unittest
 
 import numpy as np
+from numpy.typing import NDArray
 
 from scheinbild_model.counts import (
     AS_MODELLED,
@@ -32,6 +33,7 @@ from scheinbild_model.counts import (
 from scheinbild_model.manifest import (
     Manifest,
     ParameterNotInManifest,
+    ParameterValue,
     SeedNotInManifest,
 )
 from scheinbild_model.spectrogram import Spectrogram
@@ -47,8 +49,14 @@ SEED = 20260808
 PER_BIN = BUDGET / (ENERGIES * DELAYS)
 
 
-def a_manifest(overrides=None, seeds=None):
-    parameters = {COUNT_BUDGET: BUDGET, COUNT_BUDGET_DIVISION: EVEN}
+def a_manifest(
+    overrides: dict[str, ParameterValue] | None = None,
+    seeds: dict[str, int] | None = None,
+) -> Manifest:
+    parameters: dict[str, ParameterValue] = {
+        COUNT_BUDGET: BUDGET,
+        COUNT_BUDGET_DIVISION: EVEN,
+    }
     parameters.update(overrides or {})
     return Manifest.of(
         parameters=parameters,
@@ -57,7 +65,9 @@ def a_manifest(overrides=None, seeds=None):
     )
 
 
-def a_spectrogram(model=None, manifest=None):
+def a_spectrogram(
+    model: NDArray[np.float64] | None = None, manifest: Manifest | None = None
+) -> Spectrogram:
     return Spectrogram.of(
         counts=np.ones((ENERGIES, DELAYS)) if model is None else model,
         energy_axis_electronvolt=np.linspace(90.0, 110.0, ENERGIES),
@@ -69,13 +79,13 @@ def a_spectrogram(model=None, manifest=None):
 class TheValidCaseIsValid(unittest.TestCase):
     """Everything below is a departure from this, so this one comes first."""
 
-    def test_a_draw_returns_counts_on_the_same_grid(self):
+    def test_a_draw_returns_counts_on_the_same_grid(self) -> None:
         drawn = draw(a_spectrogram())
         self.assertEqual(drawn.counts.shape, (ENERGIES, DELAYS))
         self.assertEqual(drawn.energy_axis_electronvolt.size, ENERGIES)
         self.assertEqual(drawn.delay_axis_attosecond.size, DELAYS)
 
-    def test_the_axes_and_the_manifest_travel_with_the_counts(self):
+    def test_the_axes_and_the_manifest_travel_with_the_counts(self) -> None:
         spectrogram = a_spectrogram()
         drawn = draw(spectrogram)
         self.assertEqual(drawn.manifest, spectrogram.manifest)
@@ -86,7 +96,7 @@ class TheValidCaseIsValid(unittest.TestCase):
             drawn.delay_axis_attosecond, spectrogram.delay_axis_attosecond
         )
 
-    def test_the_draw_is_not_a_spectrogram(self):
+    def test_the_draw_is_not_a_spectrogram(self) -> None:
         # The wall the order rests on. A function written against expected
         # counts cannot be handed a realisation of them without the type
         # checker saying so, and this is that statement at runtime.
@@ -96,11 +106,11 @@ class TheValidCaseIsValid(unittest.TestCase):
 
 
 class TheBudgetIsSpentAcrossTheWholeScan(unittest.TestCase):
-    def test_an_even_division_spends_the_budget(self):
+    def test_an_even_division_spends_the_budget(self) -> None:
         expected = expected_counts(a_spectrogram())
         self.assertAlmostEqual(expected.total_counts(), BUDGET)
 
-    def test_an_even_division_gives_every_delay_step_the_same_total(self):
+    def test_an_even_division_gives_every_delay_step_the_same_total(self) -> None:
         # The model is brighter at later delays and the division flattens that.
         model = np.ones((ENERGIES, DELAYS)) * np.arange(1.0, DELAYS + 1.0)
         expected = expected_counts(
@@ -111,7 +121,7 @@ class TheBudgetIsSpentAcrossTheWholeScan(unittest.TestCase):
         per_step = expected.counts.sum(axis=0)
         np.testing.assert_allclose(per_step, np.full(DELAYS, BUDGET / DELAYS))
 
-    def test_as_modelled_spends_the_budget_and_keeps_the_shape(self):
+    def test_as_modelled_spends_the_budget_and_keeps_the_shape(self) -> None:
         # The same model, the same budget, the one parameter that moved. The
         # steps are in the ratio 1:2:3:4 going in and still are coming out,
         # which is the property the previous case destroys on purpose.
@@ -125,7 +135,7 @@ class TheBudgetIsSpentAcrossTheWholeScan(unittest.TestCase):
         per_step = expected.counts.sum(axis=0)
         np.testing.assert_allclose(per_step / per_step[0], np.arange(1.0, DELAYS + 1.0))
 
-    def test_the_draw_spends_the_budget_without_being_asked_to(self):
+    def test_the_draw_spends_the_budget_without_being_asked_to(self) -> None:
         # The budget is applied inside the draw rather than by the caller, so a
         # draw that ignored it is not a call anybody can write. Five standard
         # deviations of the total, which for a Poisson sum is its own square
@@ -136,7 +146,7 @@ class TheBudgetIsSpentAcrossTheWholeScan(unittest.TestCase):
 
 
 class WhatACountBudgetMayNotBe(unittest.TestCase):
-    def test_a_missing_budget_comes_out_of_the_manifest(self):
+    def test_a_missing_budget_comes_out_of_the_manifest(self) -> None:
         manifest = Manifest.of(
             parameters={COUNT_BUDGET_DIVISION: EVEN},
             seeds={COUNTING_STATISTICS_SEED: SEED},
@@ -145,24 +155,24 @@ class WhatACountBudgetMayNotBe(unittest.TestCase):
         with self.assertRaises(ParameterNotInManifest):
             draw(a_spectrogram(manifest=manifest))
 
-    def test_a_float_budget_is_refused(self):
+    def test_a_float_budget_is_refused(self) -> None:
         with self.assertRaises(CountsRefused) as refusal:
             draw(a_spectrogram(manifest=a_manifest({COUNT_BUDGET: float(BUDGET)})))
         self.assertIn("whole number", str(refusal.exception))
 
-    def test_the_same_budget_as_a_whole_number_is_accepted(self):
+    def test_the_same_budget_as_a_whole_number_is_accepted(self) -> None:
         self.assertEqual(expected_counts(a_spectrogram()).total_counts(), BUDGET)
 
-    def test_a_budget_of_zero_is_refused(self):
+    def test_a_budget_of_zero_is_refused(self) -> None:
         with self.assertRaises(CountsRefused) as refusal:
             draw(a_spectrogram(manifest=a_manifest({COUNT_BUDGET: 0})))
         self.assertIn("collects no counts", str(refusal.exception))
 
-    def test_a_negative_budget_is_refused(self):
+    def test_a_negative_budget_is_refused(self) -> None:
         with self.assertRaises(CountsRefused):
             draw(a_spectrogram(manifest=a_manifest({COUNT_BUDGET: -1})))
 
-    def test_the_smallest_budget_above_zero_is_accepted(self):
+    def test_the_smallest_budget_above_zero_is_accepted(self) -> None:
         # The near miss for both of the two above.
         self.assertEqual(
             expected_counts(
@@ -171,7 +181,7 @@ class WhatACountBudgetMayNotBe(unittest.TestCase):
             1,
         )
 
-    def test_a_budget_that_is_a_boolean_is_refused(self):
+    def test_a_budget_that_is_a_boolean_is_refused(self) -> None:
         # True is an integer to Python and is not a number of counts.
         with self.assertRaises(CountsRefused) as refusal:
             draw(a_spectrogram(manifest=a_manifest({COUNT_BUDGET: True})))
@@ -179,7 +189,7 @@ class WhatACountBudgetMayNotBe(unittest.TestCase):
 
 
 class WhatADivisionMayNotBe(unittest.TestCase):
-    def test_a_missing_division_comes_out_of_the_manifest(self):
+    def test_a_missing_division_comes_out_of_the_manifest(self) -> None:
         manifest = Manifest.of(
             parameters={COUNT_BUDGET: BUDGET},
             seeds={COUNTING_STATISTICS_SEED: SEED},
@@ -188,18 +198,18 @@ class WhatADivisionMayNotBe(unittest.TestCase):
         with self.assertRaises(ParameterNotInManifest):
             draw(a_spectrogram(manifest=manifest))
 
-    def test_an_unknown_division_is_refused_and_names_both(self):
+    def test_an_unknown_division_is_refused_and_names_both(self) -> None:
         with self.assertRaises(CountsRefused) as refusal:
             draw(a_spectrogram(manifest=a_manifest({COUNT_BUDGET_DIVISION: "uniform"})))
         message = str(refusal.exception)
         self.assertIn(EVEN, message)
         self.assertIn(AS_MODELLED, message)
 
-    def test_a_division_that_is_not_a_name_is_refused(self):
+    def test_a_division_that_is_not_a_name_is_refused(self) -> None:
         with self.assertRaises(CountsRefused):
             draw(a_spectrogram(manifest=a_manifest({COUNT_BUDGET_DIVISION: 0})))
 
-    def test_both_of_the_two_names_are_accepted(self):
+    def test_both_of_the_two_names_are_accepted(self) -> None:
         # The near miss for the two above, and the statement that the tuple the
         # refusal message quotes is the tuple the module acts on.
         for division in DIVISIONS:
@@ -213,12 +223,14 @@ class WhatADivisionMayNotBe(unittest.TestCase):
 
 
 class AModelWithNothingInItIsRefusedRatherThanScaled(unittest.TestCase):
-    def a_model_with_an_empty_delay_step(self, value=0.0):
+    def a_model_with_an_empty_delay_step(
+        self, value: float = 0.0
+    ) -> NDArray[np.float64]:
         model = np.ones((ENERGIES, DELAYS))
         model[:, 2] = value
         return model
 
-    def test_an_empty_delay_step_is_refused_under_an_even_division(self):
+    def test_an_empty_delay_step_is_refused_under_an_even_division(self) -> None:
         with self.assertRaises(CountsRefused) as refusal:
             expected_counts(
                 a_spectrogram(model=self.a_model_with_an_empty_delay_step())
@@ -227,7 +239,7 @@ class AModelWithNothingInItIsRefusedRatherThanScaled(unittest.TestCase):
         self.assertIn("Delay step 2", message)
         self.assertIn(AS_MODELLED, message)
 
-    def test_the_same_step_with_one_count_in_it_is_accepted(self):
+    def test_the_same_step_with_one_count_in_it_is_accepted(self) -> None:
         # One element away from the case above, and the whole grid is otherwise
         # identical.
         model = self.a_model_with_an_empty_delay_step()
@@ -237,7 +249,7 @@ class AModelWithNothingInItIsRefusedRatherThanScaled(unittest.TestCase):
             expected.counts.sum(axis=0), np.full(DELAYS, BUDGET / DELAYS)
         )
 
-    def test_an_empty_model_is_refused_under_as_modelled(self):
+    def test_an_empty_model_is_refused_under_as_modelled(self) -> None:
         with self.assertRaises(CountsRefused) as refusal:
             expected_counts(
                 a_spectrogram(
@@ -247,7 +259,7 @@ class AModelWithNothingInItIsRefusedRatherThanScaled(unittest.TestCase):
             )
         self.assertIn("no expected counts at all", str(refusal.exception))
 
-    def test_one_count_anywhere_is_enough_for_as_modelled(self):
+    def test_one_count_anywhere_is_enough_for_as_modelled(self) -> None:
         model = np.zeros((ENERGIES, DELAYS))
         model[1, 1] = 1.0
         expected = expected_counts(
@@ -259,7 +271,7 @@ class AModelWithNothingInItIsRefusedRatherThanScaled(unittest.TestCase):
 
 
 class TheSeedComesFromTheManifestAndNowhereElse(unittest.TestCase):
-    def test_a_manifest_with_no_seed_is_refused(self):
+    def test_a_manifest_with_no_seed_is_refused(self) -> None:
         # The manifest raises this and this module does not write a second copy
         # of the check beside it, so the two cannot come to disagree about what
         # a missing seed is.
@@ -267,10 +279,10 @@ class TheSeedComesFromTheManifestAndNowhereElse(unittest.TestCase):
             draw(a_spectrogram(manifest=a_manifest(seeds={})))
         self.assertIn(COUNTING_STATISTICS_SEED, str(refusal.exception))
 
-    def test_a_manifest_carrying_that_seed_draws(self):
+    def test_a_manifest_carrying_that_seed_draws(self) -> None:
         self.assertEqual(draw(a_spectrogram()).counts.shape, (ENERGIES, DELAYS))
 
-    def test_one_manifest_drawn_twice_gives_the_same_bytes(self):
+    def test_one_manifest_drawn_twice_gives_the_same_bytes(self) -> None:
         # Byte for byte rather than close, which is the rule in
         # docs/decisions/determinism-and-seeding.md. The dtype is compared as
         # well, because two arrays of different widths can hold the same bytes.
@@ -279,7 +291,7 @@ class TheSeedComesFromTheManifestAndNowhereElse(unittest.TestCase):
         self.assertEqual(first.counts.dtype, second.counts.dtype)
         self.assertEqual(first.counts.tobytes(), second.counts.tobytes())
 
-    def test_a_different_seed_gives_different_counts(self):
+    def test_a_different_seed_gives_different_counts(self) -> None:
         # The near miss for the case above: everything else in the manifest is
         # the same, so a draw ignoring the seed would pass that test and fail
         # this one.
@@ -295,7 +307,7 @@ class TheSeedComesFromTheManifestAndNowhereElse(unittest.TestCase):
 REPLICATES = 2000
 
 
-def replicates():
+def replicates() -> NDArray[np.int64]:
     """One draw per seed, over the same model and the same budget."""
     return np.stack(
         [
@@ -310,7 +322,7 @@ def replicates():
 
 
 class TheDrawIsPoissonAboutTheExpectedCounts(unittest.TestCase):
-    def test_the_mean_of_many_draws_converges_on_the_expected_counts(self):
+    def test_the_mean_of_many_draws_converges_on_the_expected_counts(self) -> None:
         # The mean of R draws of a Poisson with expectation L has standard
         # deviation sqrt(L / R). The tolerance is five of those, which a correct
         # implementation exceeds in one bin with probability about 6e-7, and
@@ -322,7 +334,7 @@ class TheDrawIsPoissonAboutTheExpectedCounts(unittest.TestCase):
             drawn.mean(axis=0), np.full((ENERGIES, DELAYS), PER_BIN), atol=tolerance
         )
 
-    def test_the_variance_matches_the_mean(self):
+    def test_the_variance_matches_the_mean(self) -> None:
         # The property that separates a Poisson from any other draw with the
         # same mean. The sample variance of R draws has a relative standard
         # deviation of sqrt(2 / (R - 1)), which is 3.2 per cent here, and the
@@ -336,7 +348,7 @@ class TheDrawIsPoissonAboutTheExpectedCounts(unittest.TestCase):
 
 
 class NothingModifiesTheCountsAfterTheDraw(unittest.TestCase):
-    def test_every_value_is_a_whole_number(self):
+    def test_every_value_is_a_whole_number(self) -> None:
         # The draw is the last operation. Every operation the order rule is
         # about, a smoothing first among them, leaves fractional values behind,
         # so this asks whether anything continuous ran afterwards.
@@ -344,25 +356,27 @@ class NothingModifiesTheCountsAfterTheDraw(unittest.TestCase):
         self.assertTrue(np.issubdtype(drawn.counts.dtype, np.integer))
         self.assertTrue(np.all(drawn.counts >= 0))
 
-    def test_the_counts_refuse_to_be_written_to(self):
+    def test_the_counts_refuse_to_be_written_to(self) -> None:
         drawn = draw(a_spectrogram())
         with self.assertRaises(ValueError):
             drawn.counts[0, 0] = 0
 
-    def test_the_axes_refuse_to_be_written_to(self):
+    def test_the_axes_refuse_to_be_written_to(self) -> None:
         drawn = draw(a_spectrogram())
         with self.assertRaises(ValueError):
             drawn.energy_axis_electronvolt[0] = 0.0
         with self.assertRaises(ValueError):
             drawn.delay_axis_attosecond[0] = 0.0
 
-    def test_the_spectrogram_that_went_in_is_unchanged(self):
+    def test_the_spectrogram_that_went_in_is_unchanged(self) -> None:
         spectrogram = a_spectrogram()
         before = spectrogram.counts.copy()
         draw(spectrogram)
         np.testing.assert_array_equal(spectrogram.counts, before)
 
-    def test_writing_through_the_array_the_draw_was_given_does_not_reach_it(self):
+    def test_writing_through_the_array_the_draw_was_given_does_not_reach_it(
+        self,
+    ) -> None:
         # The copy in the constructor rather than a shared view. A caller who
         # still holds the array cannot change what the drawn counts report.
         source = np.zeros((ENERGIES, DELAYS), dtype=np.int64)

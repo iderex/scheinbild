@@ -34,11 +34,11 @@ class WarningsAreErrors(unittest.TestCase):
     quietly running in it. The command that satisfies it is in the README.
     """
 
-    def test_a_warning_is_an_error(self):
+    def test_a_warning_is_an_error(self) -> None:
         with self.assertRaises(UserWarning):
             warnings.warn("The suite must be run with warnings as errors.")
 
-    def test_the_run_carries_the_option_that_makes_that_true(self):
+    def test_the_run_carries_the_option_that_makes_that_true(self) -> None:
         # Named separately from the test above so that a failure says which of
         # the two facts is missing: the mode, or the reason the mode holds.
         self.assertTrue(
@@ -60,22 +60,22 @@ class TheNetworkIsRefused(unittest.TestCase):
 
     address = ("127.0.0.1", 9)
 
-    def test_connect_is_refused(self):
+    def test_connect_is_refused(self) -> None:
         with socket.socket() as sock, self.assertRaises(NetworkAccessRefused):
             sock.connect(self.address)
 
-    def test_connect_ex_is_refused(self):
+    def test_connect_ex_is_refused(self) -> None:
         with socket.socket() as sock, self.assertRaises(NetworkAccessRefused):
             sock.connect_ex(self.address)
 
-    def test_the_refusal_says_which_rule_it_is(self):
+    def test_the_refusal_says_which_rule_it_is(self) -> None:
         with socket.socket() as sock, self.assertRaises(NetworkAccessRefused) as caught:
             sock.connect(self.address)
         message = str(caught.exception)
         self.assertIn("default test suite may not use the network", message)
         self.assertIn("skipped network test", message)
 
-    def test_the_standard_library_reaches_the_same_refusal(self):
+    def test_the_standard_library_reaches_the_same_refusal(self) -> None:
         # create_connection is the path urllib and everything above it take, so
         # this is the case that says the two patched methods cover more than a
         # test calling connect directly.
@@ -93,7 +93,7 @@ class ThePlottingBackendIsForced(unittest.TestCase):
     against happens before that.
     """
 
-    def test_the_backend_is_non_interactive(self):
+    def test_the_backend_is_non_interactive(self) -> None:
         self.assertEqual(os.environ.get("MPLBACKEND"), "Agg")
 
 

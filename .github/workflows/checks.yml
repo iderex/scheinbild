@@ -106,9 +106,9 @@ jobs:
           # contributor runs and the command the gate runs cover the same set,
           # and neither can widen or narrow it without a diff.
           #
-          # That set is src. The suite is not in it, and issue #56 carries both
-          # the count of what that costs and the work of closing it. A green row
-          # here is a statement about src.
+          # That set is the forward model and the standard analysis, the tools
+          # the gate runs, and the test suite, which issue #56 added. A green
+          # row here is a statement about those and about nothing else.
           if ! uv run --locked --group check mypy; then
             echo "::error::Type check failed. The lines above name the file, the line and the error code. The settings are under [tool.mypy] in pyproject.toml. Reproduce with: uv run --group check mypy"
             exit 1
