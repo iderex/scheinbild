@@ -132,10 +132,11 @@ from a green row.
 board's own rules are refused, including the import boundary in
 [decisions/model-analysis-boundary.md](decisions/model-analysis-boundary.md), so a
 merge possible while it is red is a merge possible while those rules are off.
-Cost of blocking: it reads `src` and nothing else, and one of the four rules
-issue #19 names is not enforced at all, which issue #58 holds. Requiring it buys
-three rules over two packages and not the fourth, and a reader who takes the row
-for all four has read more into it than it says.
+Cost of blocking: it reads `src` and nothing else, so the suite and `tools/` are
+outside what a green row speaks for. Every rule issue #19 names is enforced now,
+the numeric literal one since issue #58 landed it against a register of the sites
+that carry no physics. What the row does not cover is whether an entry in that
+register is honest, which is a judgement and is what the review is for.
 
 `Analyze (python)`. Intended to block. Cost of blocking: its query pack moves on
 its own, so it can turn red on a branch that changed nothing, and on this board
@@ -188,10 +189,11 @@ is in the list above. It is kept rather than deleted because the next issue that
 fixes a name before publishing it belongs here, and a section that exists is
 easier to add a line to than one somebody has to notice is missing.
 
-A name being published is not the same as the rule behind it being enforced. One
-rule issue #19 names has no check at all, which issue #58 holds and which the
-`Enforce greppable invariants` entry above states in place of leaving the row to
-imply otherwise.
+A name being published is not the same as the rule behind it being enforced.
+That was written here while one rule issue #19 names had no check at all. Issue
+#58 landed it, so every published name above now stands for a rule something
+refuses, and the sentence is kept because the gap it describes is the one to
+watch for next.
 
 ## The assumption this list rests on
 

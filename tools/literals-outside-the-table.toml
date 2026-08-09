@@ -1,0 +1,119 @@
+# Every numeric literal in `src` that is not a number carrying physics.
+#
+# `no-bare-numeric-literal-outside-the-constant-table` refuses a literal
+# anywhere in the scope except zero, one, and the values written down here.
+# The rule it enforces is in docs/decisions/units-and-constants.md and the
+# design of this register is at the top of invariants.py beside it.
+#
+# An entry names a file, the definition the literal sits in, the values waived
+# inside that definition, and the reason they are not constants of the model.
+# The reason is the whole point of the file: provenance is what separates
+# `4.0 * log(2.0)` from a binding energy, and a parser cannot see it, so a
+# person writes it down once where a reviewer reads it.
+#
+# It fails closed in both directions. A value appearing in a waived definition
+# that is not listed here is refused exactly as it would be anywhere else, and
+# a value listed here that the definition no longer holds is refused as a
+# waiver that has outlived its site.
+#
+# An entry is not a place to put a physics number. A cross section, an
+# intensity ratio, a binding energy or a conversion factor belongs in
+# src/scheinbild_model/constants.py with its unit and its source, and an entry
+# here claiming otherwise is what the review is for.
+
+[[site]]
+path = "src/scheinbild_model/publish.py"
+definition = "main"
+literals = [2]
+reason = """
+The exit status for a command line that was not understood, which is the
+convention every shell already reads. Nothing physical, and nothing a manifest
+describes."""
+
+[[site]]
+path = "src/scheinbild_model/pulse.py"
+definition = "TRANSFORM_LIMIT"
+literals = [4.0, 2.0]
+reason = """
+The coefficients of the Gaussian transform limit, which the module's own
+docstring derives. Not a measured quantity and not a constant of nature: they
+follow from the shape chosen for the pulse, so a table row carrying a source
+for them would have nowhere to point."""
+
+[[site]]
+path = "src/scheinbild_model/pulse.py"
+definition = "EDGE_INTENSITY_FRACTION"
+literals = [1e-6]
+reason = """
+A modelling threshold. How far the intensity envelope has to have fallen at the
+edge of the time grid before the grid counts as holding the pulse. It changes
+what the model accepts rather than what it computes, and the comment beside it
+says what one part in a million buys."""
+
+[[site]]
+path = "src/scheinbild_model/pulse.py"
+definition = "BANDWIDTH_AGREEMENT"
+literals = [1e-3]
+reason = """
+A modelling threshold in the same class as the one above. How closely a supplied
+bandwidth has to agree with the derived one before the two are called the same
+pulse."""
+
+[[site]]
+path = "src/scheinbild_model/pulse.py"
+definition = "Pulse.__init__"
+literals = [2.0, 0.5]
+reason = """
+The twos and the half of a Gaussian. The two in `2.0 * log(2.0)` and in the
+bandwidth expression is the exponent's own factor, and the half is there because
+the quadratic phase coefficient is half the rate at which the instantaneous
+energy sweeps. Both are algebra rather than measurements."""
+
+[[site]]
+path = "src/scheinbild_model/pulse.py"
+definition = "Pulse.smallest_time_grid_half_width_attosecond"
+literals = [2.0]
+reason = """
+The same Gaussian two, inverted. This function solves the envelope for the half
+width at which it has fallen to the stated edge fraction, so the two comes back
+out of the exponent it went into."""
+
+[[site]]
+path = "src/scheinbild_model/pulse.py"
+definition = "Pulse.intensity_envelope"
+literals = [2.0]
+reason = """
+The Gaussian two in the exponent of the intensity envelope."""
+
+[[site]]
+path = "src/scheinbild_model/pulse.py"
+definition = "Pulse.spectral_intensity"
+literals = [2.0]
+reason = """
+The Gaussian two in the exponent of the spectral intensity, the Fourier
+counterpart of the one above."""
+
+[[site]]
+path = "src/scheinbild_model/spectrogram.py"
+definition = "UNIFORM_SPACING_TOLERANCE"
+literals = [1e-9]
+reason = """
+A numerical tolerance. It admits the rounding a linear grid accumulates in the
+last place across its length and refuses a spacing that genuinely varies. The
+comment beside it derives both ends of that range."""
+
+[[site]]
+path = "src/scheinbild_model/spectrogram.py"
+definition = "MINIMUM_AXIS_LENGTH"
+literals = [2]
+reason = """
+A count of points, not a quantity. An axis needs two before it has a spacing at
+all, and a scan of one delay step is not a scan."""
+
+[[site]]
+path = "src/scheinbild_model/spectrogram.py"
+definition = "Spectrogram.of"
+literals = [2]
+reason = """
+The number of dimensions a spectrogram has, energy first and delay second. A
+shape rather than a value."""

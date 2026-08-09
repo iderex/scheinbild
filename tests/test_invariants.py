@@ -14,15 +14,23 @@ proves the state of the tree on the day it ran rather than the guard.
 """
 
 import ast
+import tempfile
 import unittest
 from pathlib import Path
 
 from tools.invariants import (
+    LITERAL_REGISTER,
     RULES,
+    RegisterUnreadable,
+    WaivedSite,
+    literal_refusals,
+    load_literal_register,
     network_refusals,
     plotting_refusals,
     random_state_refusals,
     refusals_for,
+    register_dangling_refusals,
+    register_refusals,
     wall_refusals,
 )
 
@@ -226,6 +234,147 @@ class TheNetworkHasExactlyOneExit(unittest.TestCase):
     def test_an_ordinary_module_is_clean(self):
         source = "import json\nfrom pathlib import Path\n"
         self.assertEqual(list(network_refusals(MODEL, parsed(source))), [])
+
+
+LITERAL_RULE = "no-bare-numeric-literal-outside-the-constant-table"
+REGISTER_RULE = "the-literal-register-says-only-what-is-true"
+
+THE_TABLE = Path("src/scheinbild_model/constants.py")
+
+
+def waiver(definition, literals, path=MODEL):
+    return WaivedSite(path.as_posix(), definition, literals, "because the test says so")
+
+
+class ANumberOutsideTheTableIsRefused(unittest.TestCase):
+    def test_a_physics_number_written_into_the_code_is_refused(self):
+        found = list(literal_refusals(MODEL, parsed("BINDING = 48.47\n"), ()))
+        self.assertEqual(rules(found), [LITERAL_RULE])
+
+    def test_the_refusal_names_the_definition_it_sits_in(self):
+        source = "class Line:\n    def energy(self):\n        return 48.47\n"
+        found = list(literal_refusals(MODEL, parsed(source), ()))
+        self.assertIn("Line.energy", found[0].detail)
+
+    def test_zero_and_one_are_allowed_anywhere(self):
+        source = "A = 0\nB = 1\nC = 1.0\nD = 0.0\n"
+        self.assertEqual(list(literal_refusals(MODEL, parsed(source), ())), [])
+
+    def test_the_constant_table_is_where_a_number_belongs(self):
+        found = list(literal_refusals(THE_TABLE, parsed("BINDING = 48.47\n"), ()))
+        self.assertEqual(found, [])
+
+    def test_a_waived_value_passes(self):
+        register = (waiver("TRANSFORM_LIMIT", (4.0, 2.0)),)
+        source = "TRANSFORM_LIMIT = 4.0 * log(2.0)\n"
+        self.assertEqual(list(literal_refusals(MODEL, parsed(source), register)), [])
+
+    def test_a_value_the_waiver_does_not_name_is_still_refused(self):
+        # The case the register exists to keep open. A definition already waived
+        # for its own algebra is not a place a binding energy may be written.
+        register = (waiver("TRANSFORM_LIMIT", (4.0, 2.0)),)
+        source = "TRANSFORM_LIMIT = 4.0 * log(2.0) * 48.47\n"
+        found = list(literal_refusals(MODEL, parsed(source), register))
+        self.assertEqual(rules(found), [LITERAL_RULE])
+        self.assertIn("48.47", found[0].detail)
+
+    def test_an_integer_waiver_does_not_cover_the_float_beside_it(self):
+        # The one character version. `2` is a count of dimensions and `2.0` is a
+        # coefficient, they are equal in Python, and a register comparing by
+        # value alone would let either stand in for the other.
+        register = (waiver("Grid.of", (2,)),)
+        source = "class Grid:\n    def of(self):\n        return 2.0\n"
+        found = list(literal_refusals(MODEL, parsed(source), register))
+        self.assertEqual(rules(found), [LITERAL_RULE])
+
+    def test_a_waiver_does_not_reach_the_definition_next_door(self):
+        register = (waiver("First.__init__", (2.0,)),)
+        source = (
+            "class First:\n    def __init__(self):\n        self.a = 2.0\n\n\n"
+            "class Second:\n    def __init__(self):\n        self.a = 2.0\n"
+        )
+        found = list(literal_refusals(MODEL, parsed(source), register))
+        self.assertEqual(rules(found), [LITERAL_RULE])
+        self.assertIn("Second.__init__", found[0].detail)
+
+    def test_a_waiver_for_another_file_does_not_reach_this_one(self):
+        register = (waiver("BINDING", (48.47,), path=ANALYSIS),)
+        found = list(literal_refusals(MODEL, parsed("BINDING = 48.47\n"), register))
+        self.assertEqual(rules(found), [LITERAL_RULE])
+
+    def test_a_flag_is_not_a_numeric_literal(self):
+        # The near miss in the other direction. `True` is an `int` to
+        # `isinstance`, and refusing it would refuse every keyword argument in
+        # the tree.
+        source = "def go():\n    return dict(write=False, copy=True)\n"
+        self.assertEqual(list(literal_refusals(MODEL, parsed(source), ())), [])
+
+
+class TheRegisterSaysOnlyWhatIsTrue(unittest.TestCase):
+    def test_a_waiver_whose_literal_is_gone_is_refused(self):
+        register = (waiver("TRANSFORM_LIMIT", (4.0,)),)
+        seen = {MODEL.as_posix()}
+        found = list(register_refusals(register, {}, seen))
+        self.assertEqual(rules(found), [REGISTER_RULE])
+
+    def test_a_waiver_whose_literal_is_still_there_is_clean(self):
+        register = (waiver("TRANSFORM_LIMIT", (4.0,)),)
+        seen = {MODEL.as_posix()}
+        present = {(MODEL.as_posix(), "TRANSFORM_LIMIT"): {("float", 4.0)}}
+        self.assertEqual(list(register_refusals(register, present, seen)), [])
+
+    def test_a_waiver_for_a_file_this_run_did_not_read_is_left_alone(self):
+        # Not a pass and not a refusal. A run over a narrower root has not
+        # cleared the rest of the register, and saying so is what the run's own
+        # register line is for.
+        register = (waiver("TRANSFORM_LIMIT", (4.0,)),)
+        self.assertEqual(list(register_refusals(register, {}, set())), [])
+
+    def test_a_waiver_naming_a_file_that_is_not_there_is_refused(self):
+        register = (waiver("TRANSFORM_LIMIT", (4.0,)),)
+        found = list(register_dangling_refusals(register, [Path("src")], set()))
+        self.assertEqual(rules(found), [REGISTER_RULE])
+
+    def test_a_waiver_outside_the_roots_is_not_called_dangling(self):
+        register = (waiver("TRANSFORM_LIMIT", (4.0,)),)
+        found = list(register_dangling_refusals(register, [Path("tools")], set()))
+        self.assertEqual(found, [])
+
+
+class TheRegisterIsRefusedRatherThanGuessedAt(unittest.TestCase):
+    def written(self, text):
+        directory = self.enterContext(tempfile.TemporaryDirectory())
+        register = Path(directory) / "register.toml"
+        register.write_text(text, encoding="utf-8")
+        return register
+
+    def test_the_register_in_the_tree_loads(self):
+        self.assertTrue(load_literal_register(LITERAL_REGISTER))
+
+    def test_an_entry_with_no_reason_is_refused(self):
+        text = '[[site]]\npath = "a.py"\ndefinition = "X"\nliterals = [2.0]\n'
+        with self.assertRaises(RegisterUnreadable):
+            load_literal_register(self.written(text))
+
+    def test_an_entry_waiving_nothing_is_refused(self):
+        text = (
+            '[[site]]\npath = "a.py"\ndefinition = "X"\n'
+            'literals = []\nreason = "none"\n'
+        )
+        with self.assertRaises(RegisterUnreadable):
+            load_literal_register(self.written(text))
+
+    def test_an_entry_waiving_something_that_is_not_a_number_is_refused(self):
+        text = (
+            '[[site]]\npath = "a.py"\ndefinition = "X"\n'
+            'literals = ["48.47"]\nreason = "none"\n'
+        )
+        with self.assertRaises(RegisterUnreadable):
+            load_literal_register(self.written(text))
+
+    def test_a_register_that_cannot_be_read_is_not_an_empty_one(self):
+        with self.assertRaises(RegisterUnreadable):
+            load_literal_register(Path("no-such-register.toml"))
 
 
 class AFileThatCannotBeReadIsNotAFileThatPassed(unittest.TestCase):
