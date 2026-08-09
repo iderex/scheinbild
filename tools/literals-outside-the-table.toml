@@ -94,6 +94,33 @@ The Gaussian two in the exponent of the spectral intensity, the Fourier
 counterpart of the one above."""
 
 [[site]]
+path = "src/scheinbild_model/response.py"
+definition = "TIME_TO_ENERGY_EXPONENT"
+literals = [2.0]
+reason = """
+The exponent in E proportional to t to the minus two, which is what turns a
+relative time resolution into a relative energy resolution. It comes out of
+differentiating the flight time relation, which the module derives in its own
+docstring, so it is a coefficient of the algebra and a table row carrying a
+source for it would have nowhere to point."""
+
+[[site]]
+path = "src/scheinbild_model/response.py"
+definition = "MINIMUM_POINTS_PER_WIDTH"
+literals = [2.0]
+reason = """
+A modelling threshold. The fewest grid points that may fall inside one standard
+deviation of the narrowest response column before the grid stops carrying it.
+The comment beside it gives the measurement the number comes from."""
+
+[[site]]
+path = "src/scheinbild_model/response.py"
+definition = "_columns"
+literals = [2.0]
+reason = """
+The two in the exponent of a Gaussian, the same one the pulse module carries."""
+
+[[site]]
 path = "src/scheinbild_model/spectrogram.py"
 definition = "UNIFORM_SPACING_TOLERANCE"
 literals = [1e-9]
