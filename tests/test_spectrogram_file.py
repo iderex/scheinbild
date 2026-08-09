@@ -24,6 +24,8 @@ import json
 import struct
 import unittest
 import zipfile
+from collections.abc import Iterator
+from contextlib import AbstractContextManager
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -42,7 +44,7 @@ from tools.write_from_the_document import _npy_member, archive_bytes
 FIXTURE = Path(__file__).parent / "fixtures" / "spectrogram-written-2026-08-08.npz"
 
 
-def a_spectrogram():
+def a_spectrogram() -> Spectrogram:
     return Spectrogram.of(
         counts=np.arange(6.0).reshape(3, 2),
         energy_axis_electronvolt=np.array([100.0, 101.0, 102.0]),
@@ -58,17 +60,17 @@ def a_spectrogram():
 class TheRoundTrip(unittest.TestCase):
     """What a writer and a reader that share a mistake would also pass."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.directory = TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.path = Path(self.directory.name) / "trace.npz"
 
-    def test_the_array_survives(self):
+    def test_the_array_survives(self) -> None:
         original = a_spectrogram()
         returned = read(write(original, self.path))
         self.assertTrue(np.array_equal(returned.counts, original.counts))
 
-    def test_both_axes_survive(self):
+    def test_both_axes_survive(self) -> None:
         original = a_spectrogram()
         returned = read(write(original, self.path))
         self.assertTrue(
@@ -82,7 +84,7 @@ class TheRoundTrip(unittest.TestCase):
             )
         )
 
-    def test_the_manifest_survives_exactly(self):
+    def test_the_manifest_survives_exactly(self) -> None:
         # The digest rather than the fields, because the digest is what a freeze
         # record is compared against, and a float that survived to fifteen
         # figures and not to the last bit would pass a field comparison.
@@ -90,12 +92,12 @@ class TheRoundTrip(unittest.TestCase):
         returned = read(write(original, self.path))
         self.assertEqual(returned.manifest.digest(), original.manifest.digest())
 
-    def test_the_suffix_is_applied_when_it_is_missing(self):
+    def test_the_suffix_is_applied_when_it_is_missing(self) -> None:
         written = write(a_spectrogram(), Path(self.directory.name) / "trace")
         self.assertEqual(written.suffix, ".npz")
         self.assertTrue(written.exists())
 
-    def test_one_spectrogram_writes_one_archive(self):
+    def test_one_spectrogram_writes_one_archive(self) -> None:
         first = write(a_spectrogram(), Path(self.directory.name) / "a.npz")
         second = write(a_spectrogram(), Path(self.directory.name) / "b.npz")
         with zipfile.ZipFile(first) as one, zipfile.ZipFile(second) as two:
@@ -108,7 +110,7 @@ class TheRoundTrip(unittest.TestCase):
 
 
 class TheMembersAreTheOnesTheLayoutNames(unittest.TestCase):
-    def test_a_written_file_holds_exactly_the_declared_members(self):
+    def test_a_written_file_holds_exactly_the_declared_members(self) -> None:
         # The writer names its members as keyword arguments and the reader
         # compares against the constants, so this is what stops the two from
         # drifting apart without a red row.
@@ -127,10 +129,10 @@ class TheFixtureWrittenEarlier(unittest.TestCase):
     trip above and fails here.
     """
 
-    def test_the_fixture_is_in_the_tree(self):
+    def test_the_fixture_is_in_the_tree(self) -> None:
         self.assertTrue(FIXTURE.exists(), f"{FIXTURE} is missing from the tree")
 
-    def test_it_reads_back_to_what_it_was_written_from(self):
+    def test_it_reads_back_to_what_it_was_written_from(self) -> None:
         returned = read(FIXTURE)
         expected = a_spectrogram()
         self.assertTrue(np.array_equal(returned.counts, expected.counts))
@@ -145,7 +147,7 @@ class TheFixtureWrittenEarlier(unittest.TestCase):
             )
         )
 
-    def test_its_manifest_still_hashes_the_same(self):
+    def test_its_manifest_still_hashes_the_same(self) -> None:
         self.assertEqual(
             read(FIXTURE).manifest.digest(), a_spectrogram().manifest.digest()
         )
@@ -154,7 +156,7 @@ class TheFixtureWrittenEarlier(unittest.TestCase):
 class TheFileBuiltFromTheDocumentAlone(unittest.TestCase):
     """The only test here that is about the document rather than the code."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.directory = TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.path = Path(self.directory.name) / "outside.npz"
@@ -171,13 +173,13 @@ class TheFileBuiltFromTheDocumentAlone(unittest.TestCase):
             )
         )
 
-    def test_this_repository_reads_it(self):
+    def test_this_repository_reads_it(self) -> None:
         returned = read(self.path)
         self.assertEqual(returned.counts.shape, (3, 2))
         self.assertEqual(returned.manifest.parameter("label"), "from the document")
         self.assertEqual(returned.manifest.seed("counts"), 7)
 
-    def test_the_values_arrive_in_the_documented_axis_order(self):
+    def test_the_values_arrive_in_the_documented_axis_order(self) -> None:
         # C order and energy first. A writer that got either wrong produces a
         # transposed picture that a shape check alone would pass if the two
         # dimensions matched, so the values are compared and not just the shape.
@@ -188,7 +190,7 @@ class TheFileBuiltFromTheDocumentAlone(unittest.TestCase):
             )
         )
 
-    def test_two_independent_writers_do_not_produce_the_same_bytes(self):
+    def test_two_independent_writers_do_not_produce_the_same_bytes(self) -> None:
         # Asserted rather than assumed, because the opposite was assumed first
         # and it is wrong. The document fixes the members, their dtypes, their
         # shapes and the axis order, and it does not fix how the shape is
@@ -226,39 +228,43 @@ class TheFileBuiltFromTheDocumentAlone(unittest.TestCase):
 class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
     """The reader touches bytes it did not produce, so this is its own property."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         self.directory = TemporaryDirectory()
         self.addCleanup(self.directory.cleanup)
         self.path = Path(self.directory.name) / "broken.npz"
 
-    def valid(self, **overrides):
-        arguments = {
+    def valid(self, **overrides: object) -> bytes:
+        arguments: dict[str, object] = {
             "intensity": [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]],
             "energy_ev": [100.0, 101.0, 102.0],
             "delay_as": [-50.0, 50.0],
             "manifest": {"parameters": {}, "seeds": {}, "code_version": "0.0.0"},
         }
         arguments.update(overrides)
-        return archive_bytes(**arguments)
+        # Every case in this class replaces one member of a valid file with
+        # something the layout does not allow, so the overrides are values
+        # the builder does not declare on purpose. That is the subject of
+        # the class rather than a slip.
+        return archive_bytes(**arguments)  # type: ignore[arg-type]
 
-    def test_bytes_that_are_not_an_archive_are_refused(self):
+    def test_bytes_that_are_not_an_archive_are_refused(self) -> None:
         self.path.write_bytes(b"not an archive at all")
         with self.assertRaises(SpectrogramFileRefused) as refusal:
             read(self.path)
         self.assertIn("not an archive this reader can open", str(refusal.exception))
 
-    def test_a_truncated_archive_is_refused(self):
+    def test_a_truncated_archive_is_refused(self) -> None:
         whole = self.valid()
         self.path.write_bytes(whole[: len(whole) // 2])
         with self.assertRaises(SpectrogramFileRefused):
             read(self.path)
 
-    def test_a_missing_file_is_refused(self):
+    def test_a_missing_file_is_refused(self) -> None:
         with self.assertRaises(SpectrogramFileRefused) as refusal:
             read(self.path.with_name("was-never-written.npz"))
         self.assertIn("could not be read", str(refusal.exception))
 
-    def test_a_missing_member_is_refused(self):
+    def test_a_missing_member_is_refused(self) -> None:
         source = self.valid()
         with self._rebuilt(source, drop="delay_as.npy") as rebuilt:
             self.path.write_bytes(rebuilt)
@@ -266,7 +272,7 @@ class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
             read(self.path)
         self.assertIn("exactly", str(refusal.exception))
 
-    def test_an_extra_member_is_refused_rather_than_ignored(self):
+    def test_an_extra_member_is_refused_rather_than_ignored(self) -> None:
         # A reader that ignores what it does not recognise is how one version of
         # a format silently drops what a later version added.
         source = self.valid()
@@ -276,7 +282,7 @@ class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
             read(self.path)
         self.assertIn("exactly", str(refusal.exception))
 
-    def test_a_manifest_that_is_not_json_is_refused(self):
+    def test_a_manifest_that_is_not_json_is_refused(self) -> None:
         self.path.write_bytes(self.valid())
         rewritten = self._replace_member(
             self.path.read_bytes(), "manifest_json_utf8.npy", _u1_member(b"{not json")
@@ -286,7 +292,7 @@ class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
             read(self.path)
         self.assertIn("not JSON", str(refusal.exception))
 
-    def test_a_manifest_member_in_the_wrong_dtype_is_refused(self):
+    def test_a_manifest_member_in_the_wrong_dtype_is_refused(self) -> None:
         # Found by removing the guard and watching the suite stay green. A
         # unicode array in this container is UTF-32, so a writer who reached for
         # the obvious string type produces a member whose bytes are not the
@@ -302,7 +308,7 @@ class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
             read(self.path)
         self.assertIn("dtype", str(refusal.exception))
 
-    def test_a_two_dimensional_manifest_member_is_refused(self):
+    def test_a_two_dimensional_manifest_member_is_refused(self) -> None:
         # Same finding. The layout says one dimensional, and a member shaped as
         # a block of lines still decodes to bytes in row order, so a reader that
         # skipped this would parse a manifest out of a shape the layout forbids.
@@ -318,7 +324,7 @@ class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
             read(self.path)
         self.assertIn("dimensions", str(refusal.exception))
 
-    def test_a_manifest_that_is_json_but_not_an_object_is_refused(self):
+    def test_a_manifest_that_is_json_but_not_an_object_is_refused(self) -> None:
         # Same finding again. A JSON array parses, so a reader that only caught
         # a decode error would reach the key lookup with a list and fail there
         # with a message about the wrong thing.
@@ -331,7 +337,7 @@ class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
             read(self.path)
         self.assertIn("is a list", str(refusal.exception))
 
-    def test_a_manifest_missing_a_key_is_refused(self):
+    def test_a_manifest_missing_a_key_is_refused(self) -> None:
         self.path.write_bytes(self.valid())
         payload = json.dumps({"parameters": {}, "seeds": {}}).encode("utf-8")
         rewritten = self._replace_member(
@@ -342,7 +348,7 @@ class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
             read(self.path)
         self.assertIn("code_version", str(refusal.exception))
 
-    def test_an_axis_that_disagrees_with_the_array_is_refused(self):
+    def test_an_axis_that_disagrees_with_the_array_is_refused(self) -> None:
         # The object's rules are the file's rules. A file assembled by hand can
         # hold an axis that does not match its array, and reading one has to
         # refuse for the same reason building one would.
@@ -351,24 +357,29 @@ class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
             read(self.path)
         self.assertIn("does not hold a spectrogram", str(refusal.exception))
 
-    def test_a_non_uniform_axis_in_a_file_is_refused(self):
+    def test_a_non_uniform_axis_in_a_file_is_refused(self) -> None:
         self.path.write_bytes(self.valid(energy_ev=[100.0, 101.0, 105.0]))
         with self.assertRaises(SpectrogramFileRefused) as refusal:
             read(self.path)
         self.assertIn("not uniform", str(refusal.exception))
 
-    def test_a_well_formed_file_is_still_accepted(self):
+    def test_a_well_formed_file_is_still_accepted(self) -> None:
         # The near miss for the whole class. Every case above is one change away
         # from this, so this is what says the refusals are about the change.
         self.path.write_bytes(self.valid())
         self.assertEqual(read(self.path).counts.shape, (3, 2))
 
-    def _rebuilt(self, source, drop=None, add=None):
+    def _rebuilt(
+        self,
+        source: bytes,
+        drop: str | None = None,
+        add: tuple[str, bytes] | None = None,
+    ) -> AbstractContextManager[bytes]:
         import io as _io
         from contextlib import contextmanager
 
         @contextmanager
-        def rebuild():
+        def rebuild() -> Iterator[bytes]:
             buffer = _io.BytesIO()
             with (
                 zipfile.ZipFile(_io.BytesIO(source)) as original,
@@ -383,7 +394,7 @@ class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
 
         return rebuild()
 
-    def _replace_member(self, source, name, payload):
+    def _replace_member(self, source: bytes, name: str, payload: bytes) -> bytes:
         import io as _io
 
         buffer = _io.BytesIO()
@@ -398,7 +409,7 @@ class AMalformedFileIsRefusedAndSaysWhy(unittest.TestCase):
         return buffer.getvalue()
 
 
-def _u1_member(payload):
+def _u1_member(payload: bytes) -> bytes:
     """One `|u1` NPY member holding exactly these bytes, built as the layout says."""
     return _npy_member("|u1", (len(payload),), payload)
 

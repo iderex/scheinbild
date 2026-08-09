@@ -132,10 +132,21 @@ was judging. Run both yourself first:
 
 `Type check`. The checker runs strict over the paths named by `files` under
 `[tool.mypy]` in `pyproject.toml`, which are the forward model, the standard
-analysis and the tools the gate runs. The test suite is not among them and does
-not type check today; issue #56 carries the count and the work. So a green row
-here is a statement about what that line names, and not about the suite.
-Reproduce it with `uv run --group check mypy`.
+analysis, the tools the gate runs and the test suite. So a green row here is a
+statement about what that line names and about nothing beyond it. Reproduce it
+with `uv run --group check mypy`.
+
+The suite is in that set because the argument for checking the model applies to
+it at least as strongly. Axis order carries meaning on this board, a wrong order
+produces a plausible picture rather than a crash, and a test that builds a
+spectrogram the wrong way round and then asserts against it agrees with the
+defect instead of catching it.
+
+Strict mode asks for a return annotation on every test method, so a new test
+without `-> None` is red. The suppressions the suite carries each say why they
+are there beside them, and most of them mark the same shape: a case that proves
+a refusal at run time is a case the checker refuses first, and the run time
+refusal is the one a caller from untyped code meets.
 
 `Docs format`. Four properties of tracked Markdown: LF line endings in the
 stored bytes, no line ending in whitespace, a final newline, and no hard tab.

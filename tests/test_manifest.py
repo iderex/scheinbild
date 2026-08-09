@@ -28,6 +28,7 @@ from scheinbild_model.manifest import (
     Manifest,
     ManifestRefused,
     ParameterNotInManifest,
+    ParameterValue,
     SeedNotInManifest,
 )
 
@@ -35,7 +36,7 @@ from scheinbild_model.manifest import (
 # The digest is written out rather than computed here on purpose. Computing it
 # would compare this machine with itself and pass on every platform whatever
 # each of them did.
-_FIXED_PARAMETERS = {
+_FIXED_PARAMETERS: dict[str, ParameterValue] = {
     "photon_energy_electronvolt": 105.2,
     "delay_steps": 41,
     "chirp_present": False,
@@ -57,12 +58,12 @@ def _fixed_manifest() -> Manifest:
 class AParameterComesFromTheManifestOrFromNowhere(unittest.TestCase):
     """The arrangement that makes the manifest complete rather than intended."""
 
-    def test_a_parameter_in_the_manifest_is_readable(self):
+    def test_a_parameter_in_the_manifest_is_readable(self) -> None:
         manifest = _fixed_manifest()
         self.assertEqual(manifest.parameter("photon_energy_electronvolt"), 105.2)
         self.assertEqual(manifest.seed("counting_statistics"), 20260808)
 
-    def test_a_parameter_not_in_the_manifest_is_refused(self):
+    def test_a_parameter_not_in_the_manifest_is_refused(self) -> None:
         manifest = _fixed_manifest()
         with self.assertRaises(ParameterNotInManifest) as refusal:
             manifest.parameter("pulse_duration_attosecond")
@@ -71,45 +72,52 @@ class AParameterComesFromTheManifestOrFromNowhere(unittest.TestCase):
         self.assertIn("pulse_duration_attosecond", str(refusal.exception))
         self.assertIn("photon_energy_electronvolt", str(refusal.exception))
 
-    def test_a_seed_not_in_the_manifest_is_refused(self):
+    def test_a_seed_not_in_the_manifest_is_refused(self) -> None:
         manifest = _fixed_manifest()
         with self.assertRaises(SeedNotInManifest):
             manifest.seed("a_seed_nobody_declared")
 
-    def test_there_is_no_default_to_fall_back_to(self):
+    def test_there_is_no_default_to_fall_back_to(self) -> None:
         # The refusal above is only worth having if there is no second way to
         # ask. A default argument on either reader would be exactly the value
         # that influences the output and is not in the manifest.
         manifest = _fixed_manifest()
         with self.assertRaises(TypeError):
-            manifest.parameter("pulse_duration_attosecond", 0.0)
+            # Refused twice, and the suppressions are what let the second
+            # refusal be tested. Neither reader declares a second parameter,
+            # so the checker refuses the call before it is made and the
+            # interpreter refuses it when it is. A run meets the second.
+            manifest.parameter("pulse_duration_attosecond", 0.0)  # type: ignore[call-arg]
         with self.assertRaises(TypeError):
-            manifest.seed("a_seed_nobody_declared", 0)
+            manifest.seed("a_seed_nobody_declared", 0)  # type: ignore[call-arg]
 
-    def test_a_run_cannot_edit_its_own_description(self):
+    def test_a_run_cannot_edit_its_own_description(self) -> None:
         manifest = _fixed_manifest()
         with self.assertRaises(TypeError):
-            manifest.parameters["photon_energy_electronvolt"] = 90.0
+            # The same pair of refusals. Both mappings are read only and the
+            # dataclass is frozen, which the checker knows and which this
+            # asserts still holds at run time.
+            manifest.parameters["photon_energy_electronvolt"] = 90.0  # type: ignore[index]
         with self.assertRaises(TypeError):
-            manifest.seeds["counting_statistics"] = 1
+            manifest.seeds["counting_statistics"] = 1  # type: ignore[index]
         with self.assertRaises(Exception):
-            manifest.code_version = "0.0.1"
+            manifest.code_version = "0.0.1"  # type: ignore[misc]
 
 
 class TheManifestRefusesWhatCouldNotDescribeARun(unittest.TestCase):
     """Each refusal on its own, so a failure names the rule that stopped biting."""
 
-    def test_a_manifest_with_no_code_version_is_refused(self):
+    def test_a_manifest_with_no_code_version_is_refused(self) -> None:
         for version in ("", "   "):
             with self.subTest(version=version):
                 with self.assertRaises(ManifestRefused):
                     Manifest.of(parameters={}, seeds={}, code_version=version)
 
-    def test_a_nameless_parameter_is_refused(self):
+    def test_a_nameless_parameter_is_refused(self) -> None:
         with self.assertRaises(ManifestRefused):
             Manifest.of(parameters={"  ": 1.0}, seeds={}, code_version="0.0.0")
 
-    def test_a_name_carrying_a_separator_is_refused(self):
+    def test_a_name_carrying_a_separator_is_refused(self) -> None:
         # A tab or a newline in a name could be built to collide with a
         # different manifest, because those are what the canonical form uses to
         # separate its fields.
@@ -119,7 +127,7 @@ class TheManifestRefusesWhatCouldNotDescribeARun(unittest.TestCase):
                     Manifest.of(parameters={name: 1.0}, seeds={}, code_version="0.0.0")
                 self.assertIn("collide", str(refusal.exception))
 
-    def test_a_string_value_carrying_a_separator_is_refused(self):
+    def test_a_string_value_carrying_a_separator_is_refused(self) -> None:
         with self.assertRaises(ManifestRefused):
             Manifest.of(
                 parameters={"line_set": "neon\t2s"},
@@ -127,17 +135,23 @@ class TheManifestRefusesWhatCouldNotDescribeARun(unittest.TestCase):
                 code_version="0.0.0",
             )
 
-    def test_a_value_with_no_machine_independent_rendering_is_refused(self):
-        for value in ([1.0, 2.0], {"a": 1}, None, (1.0,), complex(1, 2)):
+    def test_a_value_with_no_machine_independent_rendering_is_refused(self) -> None:
+        # The values are the ones the type of a parameter excludes, so the
+        # checker refuses each of them at the call below and this asserts
+        # that the loader refuses them too. A caller reaching this module
+        # from untyped code gets no such warning, which is the case the
+        # run time refusal is for.
+        values: list[object] = [[1.0, 2.0], {"a": 1}, None, (1.0,), complex(1, 2)]
+        for value in values:
             with self.subTest(value=value):
                 with self.assertRaises(ManifestRefused):
                     Manifest.of(
-                        parameters={"a_parameter": value},
+                        parameters={"a_parameter": value},  # type: ignore[dict-item]
                         seeds={},
                         code_version="0.0.0",
                     )
 
-    def test_a_non_finite_parameter_is_refused(self):
+    def test_a_non_finite_parameter_is_refused(self) -> None:
         for value in (float("nan"), float("inf"), float("-inf")):
             with self.subTest(value=value):
                 with self.assertRaises(ManifestRefused):
@@ -147,17 +161,20 @@ class TheManifestRefusesWhatCouldNotDescribeARun(unittest.TestCase):
                         code_version="0.0.0",
                     )
 
-    def test_a_seed_that_is_not_a_whole_number_is_refused(self):
-        for value in (1.5, "7", True, None):
+    def test_a_seed_that_is_not_a_whole_number_is_refused(self) -> None:
+        # Same shape as the parameter case above, one type further out: a
+        # seed is declared as a whole number and none of these is one.
+        values: list[object] = [1.5, "7", True, None]
+        for value in values:
             with self.subTest(value=value):
                 with self.assertRaises(ManifestRefused):
                     Manifest.of(
                         parameters={},
-                        seeds={"a_seed": value},
+                        seeds={"a_seed": value},  # type: ignore[dict-item]
                         code_version="0.0.0",
                     )
 
-    def test_a_negative_seed_is_refused(self):
+    def test_a_negative_seed_is_refused(self) -> None:
         with self.assertRaises(ManifestRefused):
             Manifest.of(parameters={}, seeds={"a_seed": -1}, code_version="0.0.0")
 
@@ -165,7 +182,7 @@ class TheManifestRefusesWhatCouldNotDescribeARun(unittest.TestCase):
 class TheHashDoesNotMoveForAReasonThatIsNotAParameter(unittest.TestCase):
     """Everything the digest has to ignore."""
 
-    def test_reordering_the_keys_does_not_move_the_hash(self):
+    def test_reordering_the_keys_does_not_move_the_hash(self) -> None:
         forwards = _fixed_manifest()
         backwards = Manifest.of(
             parameters={
@@ -180,7 +197,7 @@ class TheHashDoesNotMoveForAReasonThatIsNotAParameter(unittest.TestCase):
         self.assertNotEqual(list(forwards.parameters), list(backwards.parameters))
         self.assertEqual(forwards.digest(), backwards.digest())
 
-    def test_the_same_value_written_differently_does_not_move_the_hash(self):
+    def test_the_same_value_written_differently_does_not_move_the_hash(self) -> None:
         # 0.1 + 0.2 and the decimal that prints for it are the same double.
         # A rendering that shortened either would make them hash differently.
         first = Manifest.of(
@@ -195,7 +212,7 @@ class TheHashDoesNotMoveForAReasonThatIsNotAParameter(unittest.TestCase):
         )
         self.assertEqual(first.digest(), second.digest())
 
-    def test_a_change_of_one_bit_moves_the_hash(self):
+    def test_a_change_of_one_bit_moves_the_hash(self) -> None:
         first = Manifest.of(
             parameters={"a_parameter": 0.3}, seeds={}, code_version="0.0.0"
         )
@@ -206,7 +223,9 @@ class TheHashDoesNotMoveForAReasonThatIsNotAParameter(unittest.TestCase):
         )
         self.assertNotEqual(first.digest(), second.digest())
 
-    def test_a_whole_number_and_a_float_of_the_same_value_hash_differently(self):
+    def test_a_whole_number_and_a_float_of_the_same_value_hash_differently(
+        self,
+    ) -> None:
         # A count of one and a length of one are different parameters. Without
         # the type tag in the canonical form they would render the same, and a
         # manifest that turned one into the other would be indistinguishable
@@ -219,7 +238,7 @@ class TheHashDoesNotMoveForAReasonThatIsNotAParameter(unittest.TestCase):
         )
         self.assertNotEqual(whole.digest(), fractional.digest())
 
-    def test_a_signed_zero_is_not_the_same_run_as_an_unsigned_one(self):
+    def test_a_signed_zero_is_not_the_same_run_as_an_unsigned_one(self) -> None:
         # Written down rather than left to be discovered. The two are different
         # bit patterns and they can produce different output, so they are
         # different runs here, even though they compare equal.
@@ -231,7 +250,7 @@ class TheHashDoesNotMoveForAReasonThatIsNotAParameter(unittest.TestCase):
         )
         self.assertNotEqual(positive.digest(), negative.digest())
 
-    def test_a_change_of_code_version_moves_the_hash(self):
+    def test_a_change_of_code_version_moves_the_hash(self) -> None:
         later = Manifest.of(
             parameters=dict(_FIXED_PARAMETERS),
             seeds=dict(_FIXED_SEEDS),
@@ -239,7 +258,7 @@ class TheHashDoesNotMoveForAReasonThatIsNotAParameter(unittest.TestCase):
         )
         self.assertNotEqual(_fixed_manifest().digest(), later.digest())
 
-    def test_a_seed_is_part_of_the_run(self):
+    def test_a_seed_is_part_of_the_run(self) -> None:
         other = Manifest.of(
             parameters=dict(_FIXED_PARAMETERS),
             seeds={"counting_statistics": 1, "detector_noise": 0},
@@ -257,10 +276,10 @@ class TheHashIsTheSameOnEveryPlatform(unittest.TestCase):
     order differed would fail this rather than agree with itself.
     """
 
-    def test_the_fixed_manifest_hashes_to_the_recorded_digest(self):
+    def test_the_fixed_manifest_hashes_to_the_recorded_digest(self) -> None:
         self.assertEqual(_fixed_manifest().digest(), _FIXED_DIGEST)
 
-    def test_the_canonical_form_is_what_was_hashed(self):
+    def test_the_canonical_form_is_what_was_hashed(self) -> None:
         # The form is readable rather than trusted, so two manifests that hash
         # differently can be diffed to find out where.
         form = _fixed_manifest().canonical_form()

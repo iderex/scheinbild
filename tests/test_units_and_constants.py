@@ -59,50 +59,55 @@ class TheTableRefusesARowThatBreaksTheRule(unittest.TestCase):
     still refuses something.
     """
 
-    def _good_row(self, **overrides):
-        row = {
+    def _good_row(self, **overrides: object) -> Constant:
+        row: dict[str, object] = {
             "symbol": "a_constant_for_this_test",
             "value": 1.5,
             "unit": "eV",
             "source": "A citation that would let a reader find the number.",
         }
         row.update(overrides)
-        return Constant(**row)
+        # The overrides are values the dataclass does not declare, on
+        # purpose: every case below breaks exactly one field, and a value
+        # of the wrong type is one of the things the loader refuses. The
+        # suppression is on the construction and names one code, so a
+        # misspelt field name is still reported here.
+        return Constant(**row)  # type: ignore[arg-type]
 
-    def test_a_row_with_a_good_source_loads(self):
+    def test_a_row_with_a_good_source_loads(self) -> None:
         # The control. Without it, every refusal below would also pass against
         # a loader that refused everything.
         table = load([self._good_row()])
         self.assertEqual(table["a_constant_for_this_test"].value, 1.5)
 
-    def test_an_empty_source_is_refused(self):
+    def test_an_empty_source_is_refused(self) -> None:
         with self.assertRaises(ConstantRefused) as refusal:
             load([self._good_row(source="")])
         self.assertIn("a_constant_for_this_test", str(refusal.exception))
         self.assertIn("source", str(refusal.exception))
 
-    def test_a_blank_source_is_refused(self):
+    def test_a_blank_source_is_refused(self) -> None:
         # A space is the shortest way past a check that tests for the empty
         # string, and it is what somebody writes when they mean to come back.
         with self.assertRaises(ConstantRefused):
             load([self._good_row(source="   \n\t ")])
 
-    def test_a_row_with_no_unit_is_refused(self):
+    def test_a_row_with_no_unit_is_refused(self) -> None:
         with self.assertRaises(ConstantRefused) as refusal:
             load([self._good_row(unit="")])
         self.assertIn("unit", str(refusal.exception))
 
-    def test_a_row_with_no_symbol_is_refused(self):
+    def test_a_row_with_no_symbol_is_refused(self) -> None:
         with self.assertRaises(ConstantRefused):
             load([self._good_row(symbol="  ")])
 
-    def test_a_non_finite_value_is_refused(self):
+    def test_a_non_finite_value_is_refused(self) -> None:
         for value in (float("nan"), float("inf"), float("-inf")):
             with self.subTest(value=value):
                 with self.assertRaises(ConstantRefused):
                     load([self._good_row(value=value)])
 
-    def test_a_value_that_is_not_a_float_is_refused(self):
+    def test_a_value_that_is_not_a_float_is_refused(self) -> None:
         # A string that looks like a number is the shape a table read from a
         # file would produce, and it arithmetics without raising in exactly one
         # direction: multiplication repeats it.
@@ -111,7 +116,7 @@ class TheTableRefusesARowThatBreaksTheRule(unittest.TestCase):
                 with self.assertRaises(ConstantRefused):
                     load([self._good_row(value=value)])
 
-    def test_a_symbol_declared_twice_is_refused(self):
+    def test_a_symbol_declared_twice_is_refused(self) -> None:
         with self.assertRaises(ConstantRefused) as refusal:
             load([self._good_row(), self._good_row(value=2.5)])
         self.assertIn("twice", str(refusal.exception))
@@ -120,18 +125,23 @@ class TheTableRefusesARowThatBreaksTheRule(unittest.TestCase):
 class TheShippedTableObeysItsOwnRule(unittest.TestCase):
     """The table in the tree, not a fixture, held to what the loader refuses."""
 
-    def test_every_row_carries_a_source_and_a_unit(self):
+    def test_every_row_carries_a_source_and_a_unit(self) -> None:
         self.assertNotEqual(len(CONSTANTS), 0)
         for symbol, constant in CONSTANTS.items():
             with self.subTest(symbol=symbol):
                 self.assertTrue(constant.source.strip())
                 self.assertTrue(constant.unit.strip())
 
-    def test_the_table_cannot_be_written_to(self):
+    def test_the_table_cannot_be_written_to(self) -> None:
         # A model that could edit its own constants at run time would make the
         # manifest an incomplete description of the run.
         with self.assertRaises(TypeError):
-            CONSTANTS["hartree_energy_in_electronvolt"] = None
+            # Refused twice over, and the suppression is what lets the
+            # second refusal be seen. The table is exposed as a Mapping, so
+            # the checker refuses the write before it is made; the table is
+            # also a MappingProxyType, so the write raises when it is made.
+            # This asserts the second, which is the one a run meets.
+            CONSTANTS["hartree_energy_in_electronvolt"] = None  # type: ignore[index]
 
 
 class TheShippedValuesAgreeWithEachOther(unittest.TestCase):
@@ -142,7 +152,9 @@ class TheShippedValuesAgreeWithEachOther(unittest.TestCase):
     itself.
     """
 
-    def test_the_hartree_in_electronvolts_follows_from_joules_and_the_charge(self):
+    def test_the_hartree_in_electronvolts_follows_from_joules_and_the_charge(
+        self,
+    ) -> None:
         # An energy in electronvolts is that energy in joules divided by the
         # elementary charge, and the elementary charge is exact in the SI.
         derived = (
@@ -155,7 +167,7 @@ class TheShippedValuesAgreeWithEachOther(unittest.TestCase):
             delta=_CROSS_CHECK_TOLERANCE,
         )
 
-    def test_the_atomic_unit_of_time_follows_from_hbar_and_the_hartree(self):
+    def test_the_atomic_unit_of_time_follows_from_hbar_and_the_hartree(self) -> None:
         # The atomic unit of time is hbar divided by the Hartree energy, and
         # the Planck constant it comes from is exact in the SI.
         hbar = CONSTANTS["planck_constant"].value / (2.0 * math.pi)
@@ -170,13 +182,13 @@ class TheShippedValuesAgreeWithEachOther(unittest.TestCase):
 class TheConversionsInvert(unittest.TestCase):
     """A round trip through both directions returns what went in."""
 
-    def assertRoundTrips(self, produced, value):
+    def assertRoundTrips(self, produced: float, value: float) -> None:
         self.assertTrue(
             math.isclose(produced, value, rel_tol=_ROUND_TRIP_TOLERANCE, abs_tol=0.0),
             f"A round trip returned {produced!r} for an input of {value!r}.",
         )
 
-    def test_an_energy_survives_electronvolts_to_hartree_and_back(self):
+    def test_an_energy_survives_electronvolts_to_hartree_and_back(self) -> None:
         for value in _ROUND_TRIP_VALUES:
             with self.subTest(value=value):
                 self.assertRoundTrips(
@@ -184,7 +196,7 @@ class TheConversionsInvert(unittest.TestCase):
                     value,
                 )
 
-    def test_an_energy_survives_hartree_to_electronvolts_and_back(self):
+    def test_an_energy_survives_hartree_to_electronvolts_and_back(self) -> None:
         for value in _ROUND_TRIP_VALUES:
             with self.subTest(value=value):
                 self.assertRoundTrips(
@@ -192,7 +204,7 @@ class TheConversionsInvert(unittest.TestCase):
                     value,
                 )
 
-    def test_a_time_survives_attoseconds_to_atomic_units_and_back(self):
+    def test_a_time_survives_attoseconds_to_atomic_units_and_back(self) -> None:
         for value in _ROUND_TRIP_VALUES:
             with self.subTest(value=value):
                 self.assertRoundTrips(
@@ -200,7 +212,7 @@ class TheConversionsInvert(unittest.TestCase):
                     value,
                 )
 
-    def test_a_time_survives_atomic_units_to_attoseconds_and_back(self):
+    def test_a_time_survives_atomic_units_to_attoseconds_and_back(self) -> None:
         for value in _ROUND_TRIP_VALUES:
             with self.subTest(value=value):
                 self.assertRoundTrips(
@@ -217,20 +229,20 @@ class TheConversionsGoTheRightWay(unittest.TestCase):
     do not.
     """
 
-    def test_one_hartree_is_the_tabulated_number_of_electronvolts(self):
+    def test_one_hartree_is_the_tabulated_number_of_electronvolts(self) -> None:
         self.assertEqual(
             hartree_to_electronvolts(1.0),
             CONSTANTS["hartree_energy_in_electronvolt"].value,
         )
 
-    def test_the_tabulated_number_of_electronvolts_is_one_hartree(self):
+    def test_the_tabulated_number_of_electronvolts_is_one_hartree(self) -> None:
         self.assertAlmostEqual(
             electronvolts_to_hartree(CONSTANTS["hartree_energy_in_electronvolt"].value),
             1.0,
             places=12,
         )
 
-    def test_an_atomic_unit_of_time_is_about_twenty_four_attoseconds(self):
+    def test_an_atomic_unit_of_time_is_about_twenty_four_attoseconds(self) -> None:
         # Not a tolerance on a physical value. The assertion is that an atomic
         # unit of time is tens of attoseconds and not hundredths of one, which
         # is what an inverted factor gives, and it is written as a band so that
@@ -238,7 +250,7 @@ class TheConversionsGoTheRightWay(unittest.TestCase):
         self.assertGreater(atomic_time_to_attoseconds(1.0), 20.0)
         self.assertLess(atomic_time_to_attoseconds(1.0), 30.0)
 
-    def test_a_photon_energy_in_electronvolts_is_a_few_hartree(self):
+    def test_a_photon_energy_in_electronvolts_is_a_few_hartree(self) -> None:
         # 105.2 eV is the photon energy the measurement this board is about was
         # made at, and it is about four hartree. An inverted conversion makes
         # it about three thousand.
