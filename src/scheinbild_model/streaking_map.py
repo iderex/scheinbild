@@ -18,8 +18,12 @@ core takes the delay rather than computing it is argued in
 ../../docs/decisions/physics-core.md, and it is the whole reason this board can
 tell a right answer from a wrong one.
 
-Like every other parameter of this model, it is read through the manifest or it
-is not read at all. There is no default and no second source.
+Like every other run parameter of this model, it is read through the manifest or
+it is not read at all. There is no default and no second source. The other two
+numbers of a line are not run parameters: a binding energy and a cross section
+are atomic data, they arrive from the file `atomic_data` loads, and
+../../docs/decisions/atomic-data.md is where that split is decided and where the
+reason the delay is not in that file is written.
 
 ## Two times, and which one the delay axis is
 
@@ -112,14 +116,18 @@ from scheinbild_model.streaking_field import StreakingField
 # manifest.
 BIRTH_TIME_POINTS = "streaking_map_birth_time_points"
 
-# What every line in a manifest is asked for, under its own name. A line called
-# "2p" carries `line_2p_binding_energy_electronvolt` and the other two beside
-# it. Written as a prefix and three suffixes rather than as a fixed set of
-# names, so that a run carrying a different set of lines is a different manifest
-# and not different code.
+# What a line is asked of the manifest, under its own name. A line called "2p"
+# carries `line_2p_intrinsic_delay_attosecond`. Written as a prefix and a suffix
+# rather than as a fixed set of names, so that a run carrying a different set of
+# lines is a different manifest and not different code.
+#
+# The delay is the only one of a line's three numbers that comes from here. The
+# binding energy and the strength are atomic data, and
+# ../../docs/decisions/atomic-data.md fixes those as a file the model reads
+# rather than as run configuration. The same record says why the delay is not in
+# that file: it is not well known, and a number for it beside a cited binding
+# energy would be a confidence the field does not have.
 LINE_PREFIX = "line_"
-BINDING_ENERGY = "binding_energy_electronvolt"
-RELATIVE_STRENGTH = "relative_strength"
 INTRINSIC_DELAY = "intrinsic_delay_attosecond"
 
 # A birth time grid needs two points before it has a step at all, and one point
@@ -152,16 +160,27 @@ class Line:
     intrinsic_delay_attosecond: float
 
     @classmethod
-    def of(cls, manifest: Manifest, name: str) -> "Line":
-        """The line of this name, out of the manifest, or a refusal.
+    def of(
+        cls,
+        manifest: Manifest,
+        name: str,
+        binding_energy_electronvolt: float,
+        relative_strength: float,
+    ) -> "Line":
+        """A line, from its atomic numbers and the delay the operator put in.
+
+        Two of the three arrive as arguments because they are atomic data, read
+        out of the file `atomic_data` loads, and one is read here out of the
+        manifest because it is a run parameter. Which is which is fixed in
+        ../../docs/decisions/atomic-data.md rather than here.
 
         The intrinsic delay is deliberately unconstrained in sign. A line that
         emits before the one it is measured against is the case this board
         exists to be able to represent, and a refusal of a negative delay would
         quietly halve what can be asked.
         """
-        binding_energy = _as_float(manifest, name, BINDING_ENERGY)
-        strength = _as_float(manifest, name, RELATIVE_STRENGTH)
+        binding_energy = float(binding_energy_electronvolt)
+        strength = float(relative_strength)
 
         if binding_energy <= 0.0:
             raise StreakingMapRefused(
@@ -184,7 +203,7 @@ class Line:
             name=name,
             binding_energy_electronvolt=binding_energy,
             relative_strength=strength,
-            intrinsic_delay_attosecond=_as_float(manifest, name, INTRINSIC_DELAY),
+            intrinsic_delay_attosecond=_delay_of(manifest, name),
         )
 
 
@@ -198,9 +217,9 @@ def parameter_name(line_name: str, quantity: str) -> str:
     return f"{LINE_PREFIX}{line_name}_{quantity}"
 
 
-def _as_float(manifest: Manifest, line_name: str, quantity: str) -> float:
-    """One of a line's quantities, as a float, refusing what is not a number."""
-    name = parameter_name(line_name, quantity)
+def _delay_of(manifest: Manifest, line_name: str) -> float:
+    """One line's intrinsic delay, refusing a value that is not a number."""
+    name = parameter_name(line_name, INTRINSIC_DELAY)
     value = manifest.parameter(name)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         raise StreakingMapRefused(

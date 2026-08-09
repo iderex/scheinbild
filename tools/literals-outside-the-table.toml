@@ -191,3 +191,22 @@ reason = """
 A count of bins. Each birth time's weight is split between the two grid points
 either side of the energy it lands at, which is what conserves the total and its
 first moment, so the lower of the pair is never the last point of the axis."""
+
+[[site]]
+path = "src/scheinbild_model/assembly.py"
+definition = "MINIMUM_AXIS_POINTS"
+literals = [2]
+reason = """
+A count of grid points, not a quantity. The same statement the spectrogram type
+makes about its own axes, repeated where an axis is being built so that the
+refusal names the parameter that was wrong."""
+
+[[site]]
+path = "src/scheinbild_model/assembly.py"
+definition = "RADIANS_PER_TURN"
+literals = [2.0]
+reason = """
+The two of two pi. A carrier's angular frequency times its period is one full
+turn, so the period is two pi over the frequency. Geometry rather than a
+measurement, and a table row carrying a source for it would have nowhere to
+point."""
