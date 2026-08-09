@@ -19,10 +19,12 @@ a run rather than waiting for a reviewer to notice it.
 What is in the table today is the conversion factors and the exact SI values
 they are checked against, and nothing else. The atomic data this model needs for
 neon, the binding energies and cross sections and satellite intensities, is not
-here: whether those values may be shipped in this repository at all, or only
-cited, is entry 6 in issue #1 and is open. The table is built so either answer
-fits. The source field is a citation string and the loader does not care whether
-the value beside it was copied out of that source or fetched from it.
+here and will not be. Entry 6 of issue #1 answered where it comes from and
+whether it may be shipped, and the answer put it in data files with a statement
+of terms beside every citation, which is written down in
+../../docs/decisions/atomic-data.md. A cross section against photon energy is a
+column rather than a row, and a reader has to be able to disagree with one by
+editing it, so neither shape belongs in this table.
 
 Two rows here are exact by definition rather than measured. The Planck constant
 and the elementary charge have fixed values in the SI, so their rows carry no

@@ -105,8 +105,13 @@ wrong one passes every route this repository has.
 
 ## What this does not settle
 
-Which body of constants the values come from, and whether those values may be
-shipped in the repository or only cited, is entry 6 in issue #1 and is open. This
-document fixes the shape of the table and the rule each entry obeys. It does not
-choose what fills it, and it would be satisfied by a table with one entry or
+This document fixes the shape of the table and the rule each entry obeys. It does
+not choose what fills it, and it would be satisfied by a table with one entry or
 with none.
+
+Which body of atomic data the model reads, and whether those values may be
+shipped in the repository or only cited, was entry 6 in issue #1 and is answered
+in [atomic-data.md](atomic-data.md). The answer does not change the rule above:
+it adds a second field beside the source, saying how that source's terms were
+understood, and it keeps binding energies and cross sections out of this table
+and in data files a reader can edit.
