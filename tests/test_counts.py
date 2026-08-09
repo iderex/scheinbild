@@ -29,7 +29,11 @@ from scheinbild_model.counts import (
     draw,
     expected_counts,
 )
-from scheinbild_model.manifest import Manifest, ParameterNotInManifest
+from scheinbild_model.manifest import (
+    Manifest,
+    ParameterNotInManifest,
+    SeedNotInManifest,
+)
 from scheinbild_model.spectrogram import Spectrogram
 
 ENERGIES = 3
@@ -256,7 +260,10 @@ class AModelWithNothingInItIsRefusedRatherThanScaled(unittest.TestCase):
 
 class TheSeedComesFromTheManifestAndNowhereElse(unittest.TestCase):
     def test_a_manifest_with_no_seed_is_refused(self):
-        with self.assertRaises(CountsRefused) as refusal:
+        # The manifest raises this and this module does not write a second copy
+        # of the check beside it, so the two cannot come to disagree about what
+        # a missing seed is.
+        with self.assertRaises(SeedNotInManifest) as refusal:
             draw(a_spectrogram(manifest=a_manifest(seeds={})))
         self.assertIn(COUNTING_STATISTICS_SEED, str(refusal.exception))
 
