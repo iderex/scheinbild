@@ -151,19 +151,30 @@ indented or fenced. Why it stops there is written at the top of
 copy, which is what keeps a checkout with different line endings from reporting
 every document in the tree as broken.
 
-`Enforce greppable invariants`. Three rules that are properties of the source
-text rather than of its behaviour: the forward model and the standard analysis
-may not import each other, no module level random state, and no plotting import
-before the backend is forced. Red means one of them was broken, and the message
+`Enforce greppable invariants`. The rules that are properties of the source text
+rather than of its behaviour: the import boundary between the forward model and
+the standard analysis, global random state, the plotting import against the
+backend being forced, the one exit the network has, and the numeric literal that
+belongs in the constant table. Red means one of them was broken, and the message
 names the rule and what failure it prevents rather than the pattern it matched.
-Reproduce with `python -m tools.invariants src`.
+Reproduce with `python -m tools.invariants src`. That run prints the rules it
+applied, which is what a reader should compare a report against rather than the
+sentence above, because a list in a document drifts against the tool that
+decides it.
 
 The scope is `src`. The suite is not read, and neither is `tools/`, for reasons
-written at the top of `tools/invariants.py`. A fourth rule named in issue #19,
-no bare numeric literal outside the constant table, is not enforced: as a text
-rule it refuses thirteen sites in the tree that the decision it comes from
-excludes by name, and issue #58 holds the measurement and the answers. A green
-row here says nothing about that rule.
+written at the top of `tools/invariants.py`.
+
+The literal rule has a register beside the checker,
+`tools/literals-outside-the-table.toml`, holding every number in `src` that is
+not a physics number, with the reason it is not. Provenance is what separates
+`4.0 * log(2.0)` from a binding energy and a parser cannot see it, so a person
+writes it down once. The register fails closed in both directions: a value not
+written there is refused wherever it appears, including inside a definition that
+is waived for its other values, and a value written there that the definition no
+longer holds is refused as a waiver that has outlived its site. Adding a physics
+number to the code and an entry here rather than a row to the table is a thing a
+reviewer refuses, not a thing the checker can.
 
 `Analyze (python)`. The standard code scanning analysis. On a numerical board
 its findings will mostly be about file handling and deserialisation rather than

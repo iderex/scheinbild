@@ -84,12 +84,24 @@ refused.
 
 An entry in the constant table missing its unit or its source is refused.
 
-Neither is enforced today. The check that refuses a bare numeric literal outside
-the constant table is one of the greppable invariants in issue #19, which names
-that pattern already, and the entry shape is refused by the table's own loader
-when issue #22 builds it. Until both land this document is prose that nothing
-checks, and a constant added tomorrow without a source will pass every route
-this repository has.
+Both are enforced now. The entry shape is refused by the table's own loader,
+which landed in issue #51 and refuses a row with no source at import time. The
+bare literal is refused by `no-bare-numeric-literal-outside-the-constant-table`
+in `tools/invariants.py`, which landed in issue #58.
+
+That second one carries a register, `tools/literals-outside-the-table.toml`,
+because the rule is about where a number came from and a reading of the source
+cannot see that. `4.0 * log(2.0)` and a binding energy are the same shape to a
+parser, so every narrowing that got the tree green admitted the value the rule
+exists to refuse. Instead the literal stays refused everywhere and a site that
+carries one is entered in the register with the reason it is not a physics
+number. A value not entered is refused wherever it appears, and an entry whose
+site no longer holds its value is refused as well, so the register cannot
+quietly grow past what is true of the tree.
+
+What no check makes is the judgement inside an entry. Whether a number really
+carries no physics is a sentence a person wrote and a reviewer reads, and a
+wrong one passes every route this repository has.
 
 ## What this does not settle
 
