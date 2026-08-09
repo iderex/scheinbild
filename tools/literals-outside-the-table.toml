@@ -173,3 +173,21 @@ reason = """
 The two in the definition of kinetic energy: a kinetic energy of K belongs to a
 momentum of sqrt(2 K), and an energy is a momentum squared over two. A
 definition rather than a quantity anything measured."""
+
+[[site]]
+path = "src/scheinbild_model/streaking_map.py"
+definition = "MINIMUM_BIRTH_TIME_POINTS"
+literals = [2]
+reason = """
+A count of grid points, not a quantity. A birth time grid needs two before it
+has a step at all, and one point is a single electron leaving at the peak of the
+pulse rather than a sampled pulse."""
+
+[[site]]
+path = "src/scheinbild_model/streaking_map.py"
+definition = "BINS_PER_DEPOSIT"
+literals = [2]
+reason = """
+A count of bins. Each birth time's weight is split between the two grid points
+either side of the energy it lands at, which is what conserves the total and its
+first moment, so the lower of the pair is never the last point of the axis."""
