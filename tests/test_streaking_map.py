@@ -41,10 +41,8 @@ from scheinbild_model.streaking_field import (
 )
 from scheinbild_model.streaking_field import DURATION as FIELD_DURATION
 from scheinbild_model.streaking_map import (
-    BINDING_ENERGY,
     BIRTH_TIME_POINTS,
     INTRINSIC_DELAY,
-    RELATIVE_STRENGTH,
     Line,
     StreakingMapRefused,
     centre_of_energy_electronvolt,
@@ -139,8 +137,6 @@ def _parameters(**overrides: object) -> dict[str, object]:
         CARRIER_ENVELOPE_PHASE: 0.0,
         PEAK_INTENSITY: _STREAKING_INTENSITY,
         BIRTH_TIME_POINTS: _BIRTH_TIME_POINTS,
-        parameter_name(_LINE, BINDING_ENERGY): _BINDING_ENERGY_ELECTRONVOLT,
-        parameter_name(_LINE, RELATIVE_STRENGTH): 1.0,
         parameter_name(_LINE, INTRINSIC_DELAY): 0.0,
     }
     parameters.update(overrides)
@@ -156,6 +152,19 @@ def _manifest(**overrides: object) -> Manifest:
         seeds={},
         code_version="a version for this test",
     )
+
+
+def _line(
+    manifest: Manifest,
+    binding_energy: float = _BINDING_ENERGY_ELECTRONVOLT,
+    strength: float = 1.0,
+) -> Line:
+    """The case's line. Its two atomic numbers are arguments, as they are in use.
+
+    In a run they come out of the data file `atomic_data` loads. Here they are
+    written down, because what is being proved is the map and not the file.
+    """
+    return Line.of(manifest, _LINE, binding_energy, strength)
 
 
 def _delays(first: float = _DELAY_FIRST_ATTOSECOND) -> NDArray[np.float64]:
@@ -207,51 +216,46 @@ class TheLineIsRefusedWhereItCouldNotBeALine(unittest.TestCase):
     def test_a_good_manifest_gives_a_line(self) -> None:
         # The control, without which every refusal below would also pass against
         # a constructor that refused everything.
-        line = Line.of(_manifest(), _LINE)
+        line = _line(_manifest())
         self.assertEqual(line.binding_energy_electronvolt, _BINDING_ENERGY_ELECTRONVOLT)
 
     def test_a_negative_binding_energy_is_refused(self) -> None:
         with self.assertRaises(StreakingMapRefused):
-            Line.of(_manifest(**{parameter_name(_LINE, BINDING_ENERGY): -1.0}), _LINE)
+            _line(_manifest(), binding_energy=-1.0)
 
     def test_a_strength_of_zero_is_refused(self) -> None:
         with self.assertRaises(StreakingMapRefused):
-            Line.of(_manifest(**{parameter_name(_LINE, RELATIVE_STRENGTH): 0.0}), _LINE)
+            _line(_manifest(), strength=0.0)
 
     def test_a_negative_strength_is_refused(self) -> None:
         with self.assertRaises(StreakingMapRefused):
-            Line.of(
-                _manifest(**{parameter_name(_LINE, RELATIVE_STRENGTH): -0.5}), _LINE
-            )
+            _line(_manifest(), strength=-0.5)
 
-    def test_a_quantity_that_is_not_a_number_is_refused(self) -> None:
+    def test_a_delay_that_is_not_a_number_is_refused(self) -> None:
         with self.assertRaises(StreakingMapRefused):
-            Line.of(
-                _manifest(**{parameter_name(_LINE, BINDING_ENERGY): "21.56"}), _LINE
-            )
+            _line(_manifest(**{parameter_name(_LINE, INTRINSIC_DELAY): "0.0"}))
 
     def test_a_negative_intrinsic_delay_is_not_refused(self) -> None:
         # Deliberate. A line emitting before the one it is measured against is
         # the case this board exists to be able to represent.
-        line = Line.of(
-            _manifest(**{parameter_name(_LINE, INTRINSIC_DELAY): -50.0}), _LINE
-        )
+        line = _line(_manifest(**{parameter_name(_LINE, INTRINSIC_DELAY): -50.0}))
         self.assertEqual(line.intrinsic_delay_attosecond, -50.0)
 
     def test_a_line_the_photon_cannot_ionise_is_refused(self) -> None:
-        manifest = _manifest(
-            **{parameter_name(_LINE, BINDING_ENERGY): _PHOTON_ELECTRONVOLT + 1.0}
-        )
+        manifest = _manifest()
         with self.assertRaises(StreakingMapRefused):
-            unstreaked_energy_electronvolt(Pulse(manifest), Line.of(manifest, _LINE))
+            unstreaked_energy_electronvolt(
+                Pulse(manifest),
+                _line(manifest, binding_energy=_PHOTON_ELECTRONVOLT + 1.0),
+            )
 
     def test_too_few_birth_times_are_refused(self) -> None:
         manifest = _manifest(**{BIRTH_TIME_POINTS: 1})
         with self.assertRaises(StreakingMapRefused):
             trace(
                 manifest,
-                Line.of(manifest, _LINE),
-                _axis_over(_manifest(), Line.of(_manifest(), _LINE), _delays(), 11),
+                _line(manifest),
+                _axis_over(_manifest(), _line(_manifest()), _delays(), 11),
                 _delays(),
             )
 
@@ -260,8 +264,8 @@ class TheLineIsRefusedWhereItCouldNotBeALine(unittest.TestCase):
         with self.assertRaises(StreakingMapRefused):
             trace(
                 manifest,
-                Line.of(manifest, _LINE),
-                _axis_over(_manifest(), Line.of(_manifest(), _LINE), _delays(), 11),
+                _line(manifest),
+                _axis_over(_manifest(), _line(_manifest()), _delays(), 11),
                 _delays(),
             )
 
@@ -278,7 +282,7 @@ class TheTraceSitsWhereTheLineIs(unittest.TestCase):
         # so the amplitude has fallen to its square root and the shift left is
         # at most that fraction of the peak shift.
         manifest = _manifest()
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         field = StreakingField(manifest)
         unstreaked = unstreaked_energy_electronvolt(Pulse(manifest), line)
         far = (
@@ -306,7 +310,7 @@ class TheCentreOfEnergyIsWhatTheMapPutThere(unittest.TestCase):
         self,
     ) -> None:
         manifest = _manifest()
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         field = StreakingField(manifest)
         unstreaked = unstreaked_energy_electronvolt(Pulse(manifest), line)
         delays = _delays()
@@ -330,7 +334,7 @@ class TheCentreOfEnergyFollowsThePotential(unittest.TestCase):
     """The physics, with the bound the ionising pulse's own length imposes."""
 
     def _departure(self, manifest: Manifest) -> float:
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         field = StreakingField(manifest)
         unstreaked = unstreaked_energy_electronvolt(Pulse(manifest), line)
         delays = _delays()
@@ -347,7 +351,7 @@ class TheCentreOfEnergyFollowsThePotential(unittest.TestCase):
 
     def test_the_centre_traces_the_shift_the_field_gives_at_that_delay(self) -> None:
         manifest = _manifest()
-        peak = _peak_shift_electronvolt(manifest, Line.of(manifest, _LINE))
+        peak = _peak_shift_electronvolt(manifest, _line(manifest))
         self.assertLess(
             self._departure(manifest),
             _TRACKING_BOUND * peak,
@@ -365,7 +369,7 @@ class TheCentreOfEnergyFollowsThePotential(unittest.TestCase):
                 TIME_GRID_HALF_WIDTH: _LONG_IONISING_HALF_WIDTH_ATTOSECOND,
             }
         )
-        peak = _peak_shift_electronvolt(manifest, Line.of(manifest, _LINE))
+        peak = _peak_shift_electronvolt(manifest, _line(manifest))
         self.assertGreater(
             self._departure(manifest),
             _TRACKING_BOUND * peak,
@@ -380,7 +384,7 @@ class TheCentreOfEnergyFollowsThePotential(unittest.TestCase):
         # the model's own field is asked for the potential rather than this test
         # rebuilding it.
         manifest = _manifest()
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         field = StreakingField(manifest)
         unstreaked = unstreaked_energy_electronvolt(Pulse(manifest), line)
         momentum = sqrt(2.0 * electronvolts_to_hartree(unstreaked))
@@ -400,9 +404,9 @@ class TheIntrinsicDelayMovesTheTrace(unittest.TestCase):
 
     def _trace(self, delay: float, first: float) -> NDArray[np.float64]:
         manifest = _manifest(**{parameter_name(_LINE, INTRINSIC_DELAY): delay})
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         delays = _delays(first)
-        axis = _axis_over(_manifest(), Line.of(_manifest(), _LINE), _delays(), 601)
+        axis = _axis_over(_manifest(), _line(_manifest()), _delays(), 601)
         return trace(manifest, line, axis, delays).counts
 
     def test_a_delayed_line_gives_the_same_trace_at_an_earlier_delay(self) -> None:
@@ -442,8 +446,8 @@ class TheCountsSurviveTheScan(unittest.TestCase):
         # than of the grid check: an axis too narrow keeps these totals right,
         # which is what the cases below are asserted directly for.
         strength = 0.37
-        manifest = _manifest(**{parameter_name(_LINE, RELATIVE_STRENGTH): strength})
-        line = Line.of(manifest, _LINE)
+        manifest = _manifest()
+        line = _line(manifest, strength=strength)
         delays = _delays()
         axis = _axis_over(manifest, line, delays, _ENERGY_POINTS)
         produced = trace(manifest, line, axis, delays)
@@ -455,7 +459,7 @@ class TheCountsSurviveTheScan(unittest.TestCase):
 class AGridThatClipsIsRefused(unittest.TestCase):
     def test_an_axis_spanning_exactly_what_the_line_reaches_is_accepted(self) -> None:
         manifest = _manifest()
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         delays = _delays()
         axis = _axis_over(manifest, line, delays, _ENERGY_POINTS)
         self.assertGreater(trace(manifest, line, axis, delays).total_counts(), 0.0)
@@ -465,7 +469,7 @@ class AGridThatClipsIsRefused(unittest.TestCase):
         # with nothing to spare, so moving its lower end up by one bin is the
         # smallest change that loses a count.
         manifest = _manifest()
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         delays = _delays()
         lowest, highest = energy_span_electronvolt(manifest, line, delays)
         spacing = (highest - lowest) / (_ENERGY_POINTS - 1)
@@ -477,7 +481,7 @@ class AGridThatClipsIsRefused(unittest.TestCase):
 
     def test_an_axis_one_bin_short_at_the_top_is_refused(self) -> None:
         manifest = _manifest()
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         delays = _delays()
         lowest, highest = energy_span_electronvolt(manifest, line, delays)
         spacing = (highest - lowest) / (_ENERGY_POINTS - 1)
@@ -493,12 +497,12 @@ class AGridThatClipsIsRefused(unittest.TestCase):
         # field, so twice the excursion, and the axis that held the first one
         # holds half of the second.
         manifest = _manifest()
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         delays = _delays()
         axis = _axis_over(manifest, line, delays, _ENERGY_POINTS)
         brighter = _manifest(**{PEAK_INTENSITY: 4.0 * _STREAKING_INTENSITY})
         with self.assertRaises(StreakingMapRefused):
-            trace(brighter, Line.of(brighter, _LINE), axis, delays)
+            trace(brighter, _line(brighter), axis, delays)
 
     def test_the_refusal_names_the_span_that_would_hold_the_line(self) -> None:
         # A refusal that said only that the grid was wrong would leave the
@@ -506,11 +510,11 @@ class AGridThatClipsIsRefused(unittest.TestCase):
         # the ones `energy_span_electronvolt` answers with, so the message and
         # the function cannot drift apart.
         manifest = _manifest()
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         delays = _delays()
         axis = _axis_over(manifest, line, delays, _ENERGY_POINTS)
         brighter = _manifest(**{PEAK_INTENSITY: 4.0 * _STREAKING_INTENSITY})
-        brighter_line = Line.of(brighter, _LINE)
+        brighter_line = _line(brighter)
         lowest, highest = energy_span_electronvolt(brighter, brighter_line, delays)
         with self.assertRaises(StreakingMapRefused) as refused:
             trace(brighter, brighter_line, axis, delays)
@@ -521,7 +525,7 @@ class AGridThatClipsIsRefused(unittest.TestCase):
 class ACentreOfEnergyNeedsCounts(unittest.TestCase):
     def test_a_delay_step_with_nothing_in_it_is_refused(self) -> None:
         manifest = _manifest()
-        line = Line.of(manifest, _LINE)
+        line = _line(manifest)
         delays = _delays()
         axis = _axis_over(manifest, line, delays, _ENERGY_POINTS)
         produced = trace(manifest, line, axis, delays)
