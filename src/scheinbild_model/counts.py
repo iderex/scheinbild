@@ -49,16 +49,6 @@ whole scan by one factor, so the relative brightness the model produced between
 one delay step and another survives. Neither is a default: a manifest naming
 neither is refused, because the two give different pictures and a run that did
 not say which it used cannot be read.
-
-## The seed, and why it is not read through the manifest's own accessor
-
-`manifest.seeds[...]` here, rather than `manifest.seed(...)`, which is the method
-written for it. The `no-global-random-state` rule in `tools/invariants.py`
-refuses any call whose name ends in `.seed`, and the manifest's accessor is such
-a call, so the sanctioned way to read a seed is refused inside `src`. The
-refusal is real and it is reproduced in issue #64. The subscript is the way past
-it that does not weaken the rule, and the check that would have named a missing
-seed is written out below instead of being inherited.
 """
 
 import numpy as np
@@ -139,23 +129,6 @@ def _division(manifest: Manifest) -> str:
             "not say which it used cannot be read afterwards."
         )
     return value
-
-
-def _seed_value(manifest: Manifest) -> int:
-    """The seed for the draw, out of the manifest and out of nowhere else.
-
-    Read by subscript rather than through the manifest's own accessor, for the
-    reason at the top of this module, so the refusal that accessor would have
-    raised is written here.
-    """
-    if COUNTING_STATISTICS_SEED not in manifest.seeds:
-        raise CountsRefused(
-            f"The manifest carries no seed named {COUNTING_STATISTICS_SEED!r}. A "
-            "seed taken from anywhere else makes two runs of one manifest "
-            "differ, which is what docs/decisions/determinism-and-seeding.md "
-            f"refuses. The manifest carries: {sorted(manifest.seeds)}."
-        )
-    return manifest.seeds[COUNTING_STATISTICS_SEED]
 
 
 class DrawnCounts:
@@ -262,9 +235,14 @@ def draw(spectrogram: Spectrogram) -> DrawnCounts:
     ../../docs/decisions/determinism-and-seeding.md. The stream belongs to the
     numpy version pinned in pyproject.toml; a different version is a different
     code version and a manifest carries that too.
+
+    The seed is read through `Manifest.seed`, so a manifest that carries no seed
+    for the draw is refused by the manifest rather than by a check written out
+    again here, and the refusal names every seed the manifest does carry.
     """
     expected = expected_counts(spectrogram)
-    generator = np.random.default_rng(_seed_value(spectrogram.manifest))
+    seed = expected.manifest.seed(COUNTING_STATISTICS_SEED)
+    generator = np.random.default_rng(seed)
     drawn: NDArray[np.int64] = generator.poisson(expected.counts)
     return DrawnCounts(
         drawn,

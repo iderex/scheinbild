@@ -86,6 +86,40 @@ class GlobalRandomStateIsRefused(unittest.TestCase):
         found = list(random_state_refusals(MODEL, parsed(source)))
         self.assertEqual(rules(found), ["no-global-random-state"])
 
+    def test_reseeding_the_process_is_refused_even_when_its_result_is_used(self):
+        # `numpy.random.seed` returns None, so assigning it is a way of writing
+        # a reseed that the discrimination below would otherwise read as an
+        # accessor. The named reseeders are refused whatever is done with them.
+        source = (
+            "import numpy\n\n\ndef go():\n"
+            "    kept = numpy.random.seed(7)\n"
+            "    return kept\n"
+        )
+        found = list(random_state_refusals(MODEL, parsed(source)))
+        self.assertEqual(rules(found), ["no-global-random-state"])
+
+    def test_the_bare_seed_function_is_refused(self):
+        source = "def go():\n    seed(7)\n"
+        found = list(random_state_refusals(MODEL, parsed(source)))
+        self.assertEqual(rules(found), ["no-global-random-state"])
+
+    def test_reading_a_seed_out_of_a_manifest_is_clean(self):
+        # The other direction of the same rule, and the reason the rule needed
+        # a discrimination at all. `Manifest.seed` is the one sanctioned way to
+        # read a seed inside src, and a rule matching the name alone refused it,
+        # which left the sanctioned way unwritable. An accessor is called for
+        # what it returns and the return is used.
+        source = 'def go(manifest):\n    return manifest.seed("counting_statistics")\n'
+        self.assertEqual(list(random_state_refusals(MODEL, parsed(source))), [])
+
+    def test_a_seed_read_into_a_name_is_clean_too(self):
+        source = (
+            "def go(manifest):\n"
+            '    value = manifest.seed("counting_statistics")\n'
+            "    return value\n"
+        )
+        self.assertEqual(list(random_state_refusals(MODEL, parsed(source))), [])
+
     def test_a_generator_built_inside_a_function_is_clean(self):
         # The near miss, and the shape the rule is asking people to write. Only
         # the module level binding is state a manifest cannot describe.

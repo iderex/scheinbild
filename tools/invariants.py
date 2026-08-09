@@ -12,6 +12,23 @@ invariant the boundary in docs/decisions/model-analysis-boundary.md depends on.
 every seed it consumes, per docs/decisions/determinism-and-seeding.md. Global
 random state is state no manifest describes.
 
+That rule has to tell two calls apart that a name alone cannot. `generator.seed(7)`
+reseeds a generator, which is the thing being refused. `manifest.seed("draw")`
+reads a recorded seed out of the description of the run, which is the thing being
+required, and refusing it left the one sanctioned way to read a seed unwritable
+inside `src`. What separates them is not the name at the end of the chain but
+what the call is for: a reseed is made for its effect and its result is dropped,
+an accessor is made for its result and the result is used. So a `.seed(...)` call
+whose value is discarded is refused, and one whose value is assigned, returned or
+passed on is not. The names that reseed global state outright are refused either
+way, because `_ = numpy.random.seed(7)` uses a value and is still the thing the
+rule exists for.
+
+The bound on that, stated rather than left to be found: a reseed written so that
+its `None` is consumed walks through, `[g.seed(7) for g in generators]` being the
+shape that does it. What is caught is every reseed written the way anybody writes
+one, and the rule is a floor here as it is for the network.
+
 `no-plotting-import-before-the-backend-is-forced`. A plotting library that picks
 an interactive backend opens a window in a suite that never asked for one, per
 docs/decisions/test-environment.md. A library that has already chosen a backend
@@ -112,6 +129,16 @@ WALLS = {
 
 RANDOM_STATE_FACTORIES = ("default_rng", "RandomState", "Random")
 
+# Calls that reseed process wide random state, refused wherever they appear and
+# whatever is done with what they return. Written as whole chains rather than as
+# a tail, so that the discrimination below is what decides every other `.seed`.
+GLOBAL_RESEEDERS = (
+    "random.seed",
+    "np.random.seed",
+    "numpy.random.seed",
+    "seed",
+)
+
 # Importing any of these puts a connection within reach of the module that did
 # it. The list is what the standard library and the common third party clients
 # offer, and it is a floor rather than a proof: a module reaching a network some
@@ -200,6 +227,19 @@ def _attribute_chain(node: ast.AST) -> str:
     return ".".join(reversed(parts))
 
 
+def _calls_made_for_their_effect(tree: ast.Module) -> set[ast.Call]:
+    """Every call in this file whose value is thrown away.
+
+    A call standing alone as a statement was made for what it does and not for
+    what it returns, which is what a reseed is and what an accessor is not.
+    """
+    return {
+        node.value
+        for node in ast.walk(tree)
+        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Call)
+    }
+
+
 def random_state_refusals(path: Path, tree: ast.Module) -> Iterator[Refusal]:
     detail = (
         "a run is fully described by its manifest, and every seed it consumes is "
@@ -207,16 +247,29 @@ def random_state_refusals(path: Path, tree: ast.Module) -> Iterator[Refusal]:
         "runs of one manifest stop being byte identical. Take a seeded generator "
         "as a parameter instead. See docs/decisions/determinism-and-seeding.md."
     )
+    reading = (
+        " Reading a seed out of a manifest is the other call this rule used to "
+        "refuse with it, and it is refused no longer: an accessor is called for "
+        "what it returns, so use the value rather than dropping it."
+    )
     rule = "no-global-random-state"
     for name, line in _imported_names(tree):
         if name == "random" or name.startswith("random."):
             yield Refusal(rule, str(path), line, f"importing {name}: {detail}")
+    for_their_effect = _calls_made_for_their_effect(tree)
     for node in ast.walk(tree):
         if not isinstance(node, ast.Call):
             continue
         called = _attribute_chain(node.func)
-        if called.endswith(".seed") or called == "seed":
+        if called in GLOBAL_RESEEDERS:
             yield Refusal(rule, str(path), node.lineno, f"calling {called}: {detail}")
+        elif called.endswith(".seed") and node in for_their_effect:
+            yield Refusal(
+                rule,
+                str(path),
+                node.lineno,
+                f"calling {called} and dropping what it returns: {detail}{reading}",
+            )
     for node in tree.body:
         # Module level only. A generator built inside a function is a local one,
         # which is the shape this rule is asking for.
