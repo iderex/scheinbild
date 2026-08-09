@@ -1,0 +1,149 @@
+# The neon main lines: what the forward model reads for the 2s and 2p channels.
+#
+# Data rather than code, so that a reader who holds a different value for any
+# number here changes the row and re-runs instead of editing a module. The
+# reason that matters on this board is in ../../../docs/decisions/atomic-data.md.
+#
+# Every number carries two things beside its value. The source it was taken
+# from, precisely enough to find the number again, and how that source's terms
+# were understood, because whether a number may be shipped in a public
+# repository at all is a question per source rather than one answer for the
+# whole file. Where the terms do not permit it, the entry carries the citation
+# and a `fetch` step instead of the value. Nothing in this file needs that
+# today: both sources below permit redistribution, and the loader carries the
+# other shape because the next data file may not be so lucky.
+#
+# The loader refuses a row missing any of it, so an entry whose provenance was
+# going to be filled in later stops a run rather than waiting for a reviewer.
+
+# How a cross section between two tabulated photon energies is obtained. Named
+# here rather than only in the loader, because the number the model uses at a
+# photon energy that is not in the table below is a product of the table and of
+# this choice together, and a reader comparing against the source needs both.
+#
+# A straight line between neighbouring points in the logarithm of the photon
+# energy and the logarithm of the cross section. Two properties decide it. It
+# cannot overshoot, which a spline through points this sparse can: between 132.3
+# eV and 8047.8 eV there are nine points across four decades of cross section,
+# and a spline that dips below zero there produces a negative cross section that
+# nothing downstream would question. And it is closer to what these curves do: a
+# subshell cross section above its threshold is near a power law in photon
+# energy, which is a straight line in these coordinates and a steep curve in the
+# values themselves.
+#
+# The second half is measured rather than asserted. Dropping each interior point
+# of the two tables in turn and interpolating it back from its neighbours gives
+# a worst relative error of 0.271 for 2p and 0.083 for 2s under this method,
+# against 2.487 and 0.890 for a straight line in the values. The command is in
+# the pull request that landed this file.
+#
+# What it does not fix, said here rather than found later: the 2p worst case
+# sits at 80 eV, where the 2p cross section is turning over near its maximum,
+# and a power law does not describe a maximum. Between 40.8 eV and 132.3 eV this
+# file is a coarse description of that curve under either method, and what
+# repairs it is more tabulated points rather than a cleverer interpolation.
+interpolation = "linear-in-log-photon-energy-and-log-cross-section"
+
+[[line]]
+name = "2p"
+
+# The outer valence line. Its binding energy is the ionisation energy of neutral
+# neon, because the 2p electron is the one that leaves in the first ionisation.
+#
+# This is the threshold to the lower of the two fine structure levels of the
+# ion. The upper one is a second 2p channel at a slightly higher binding energy
+# and this file does not carry it, so a run against this file has one 2p line
+# rather than the doublet a high resolution measurement resolves.
+[line.binding_energy]
+unit = "eV"
+value = 21.564541
+source = """
+NIST Atomic Spectra Database, ionisation energy of Ne I: 21.564541 eV with a
+standard uncertainty of 0.000007 eV, to the Ne II ground level 2s2.2p5 2P*3/2.
+https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html"""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+# The 21.2 eV row is below the experimental threshold quoted above, and it is
+# kept rather than dropped. The table was computed in a Hartree-Fock-Slater
+# central potential, whose 2p threshold is its own and is not the measured one,
+# so the row says what the source says. A run at a photon energy that low is
+# refused by the threshold rather than by this table.
+[line.cross_section]
+unit = "Mb"
+photon_energy_electronvolt = [
+  21.2, 26.8, 40.8, 80.0, 132.3, 151.4, 200.0, 300.0,
+  600.0, 800.0, 1041.0, 1253.6, 1486.6, 8047.8,
+]
+value = [
+  6.514, 8.544, 8.929, 4.991, 1.862, 1.361, 0.6791, 0.2276,
+  0.028, 0.011, 0.0048, 0.0025, 0.0013, 2.9e-6,
+]
+source = """
+Yeh, J. J. and Lindau, I., Atomic subshell photoionization cross sections and
+asymmetry parameters: 1 <= Z <= 103, Atomic Data and Nuclear Data Tables 32, 1
+(1985), https://doi.org/10.1016/0092-640X(85)90016-6, read through the
+digitisation by Kalha, C., Fernando, N., Vigil Hernandez, C., Kurtulus, E. E.,
+Li, J., Zhou, Y. and Regoutz, A., Digitisation of Yeh and Lindau Photoionisation
+Cross Section Tabulated Data, figshare (2020),
+https://doi.org/10.6084/m9.figshare.12389750, worksheet 10_Ne, column 2p."""
+terms = """
+The digitisation is offered under CC BY 4.0,
+https://creativecommons.org/licenses/by/4.0/, which permits redistribution with
+attribution, so the values are copied here and both the digitisation and the
+paper it digitises are named above. The licence was read out of the `license`
+field of https://api.figshare.com/v2/articles/12389750."""
+
+[[line]]
+name = "2s"
+
+# The inner valence line, and the one this board is about. Its binding energy is
+# not an ionisation energy of neon in any table, because removing a 2s electron
+# leaves the ion in an excited state rather than in its ground state, so it is
+# the sum of two rows and the sum is written out in the source.
+[line.binding_energy]
+unit = "eV"
+value = 48.475013
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s.2p6 2S1/2, the state left behind when a 2s electron goes, lies 26.910472 eV
+above it. 21.564541 + 26.910472 = 48.475013 eV is therefore the energy to remove
+a 2s electron from neutral neon. Ionisation energy:
+https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html"""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+# The table starts at 80 eV. Below that the source's 2s column is empty, because
+# the 2s threshold sits above the photon energies of the rows beneath it, and an
+# empty cell is not a zero. A run below 80 eV is refused rather than given an
+# extrapolated value.
+[line.cross_section]
+unit = "Mb"
+photon_energy_electronvolt = [
+  80.0, 132.3, 151.4, 200.0, 300.0, 600.0,
+  800.0, 1041.0, 1253.6, 1486.6, 8047.8,
+]
+value = [
+  0.6046, 0.439, 0.3751, 0.2538, 0.1304, 0.033,
+  0.017, 0.0097, 0.0062, 0.004, 3.8e-5,
+]
+source = """
+Yeh, J. J. and Lindau, I., Atomic subshell photoionization cross sections and
+asymmetry parameters: 1 <= Z <= 103, Atomic Data and Nuclear Data Tables 32, 1
+(1985), https://doi.org/10.1016/0092-640X(85)90016-6, read through the
+digitisation by Kalha, C., Fernando, N., Vigil Hernandez, C., Kurtulus, E. E.,
+Li, J., Zhou, Y. and Regoutz, A., Digitisation of Yeh and Lindau Photoionisation
+Cross Section Tabulated Data, figshare (2020),
+https://doi.org/10.6084/m9.figshare.12389750, worksheet 10_Ne, column 2s."""
+terms = """
+The digitisation is offered under CC BY 4.0,
+https://creativecommons.org/licenses/by/4.0/, which permits redistribution with
+attribution, so the values are copied here and both the digitisation and the
+paper it digitises are named above. The licence was read out of the `license`
+field of https://api.figshare.com/v2/articles/12389750."""
