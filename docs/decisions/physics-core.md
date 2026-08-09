@@ -49,6 +49,47 @@ job is to produce a trace with a known truth inside it should contain nothing th
 could be mistaken for the truth it is testing, and every mechanism added to the
 core is another candidate explanation for whatever the analysis returns.
 
+## The vector potential is written down, and the field is derived from it
+
+Decided in issue #27, and recorded here because it is a statement about what the
+core computes rather than about how a module is written.
+
+Differentiating a chosen vector potential to get the field, and integrating a
+chosen field to get the potential, are not the same model. A field written down
+directly does not in general integrate to a potential that returns to zero after
+the pulse has passed, and a residual potential at late times says the pulse left
+a constant momentum behind it. In a delay scan that appears as a drift along the
+delay axis, which is the axis the extracted delay is read off, so it arrives
+looking like a systematic effect of the measurement.
+
+So the potential is the primitive. It is an envelope times a carrier, which goes
+to zero at both ends of time by construction, and the field is its derivative in
+closed form. The other direction is not reachable: no module in this package
+returns a potential built by integrating a field.
+
+The cost is that the duration a run states is the width of the envelope the
+POTENTIAL carries, and the field's own envelope differs from it by the term that
+comes off differentiating the envelope. That difference is of the order of one
+over the carrier frequency times the duration, so it is small for a pulse of many
+cycles and is not small for a pulse of one or two.
+
+### The sign
+
+An electron has charge minus one in atomic units. With the field written as minus
+the time derivative of the potential, the electron's equation of motion
+integrates from the moment of ionisation to long after the pulse to give
+
+    final momentum = momentum at ionisation - potential at ionisation
+
+In words: an electron born while the vector potential is positive comes out
+slower along the polarisation direction, and one born while it is negative comes
+out faster.
+
+This is written twice on purpose, here and at the top of the module that applies
+it, because a sign error here inverts the direction of every extracted delay and
+produces a result that is internally consistent and backwards. One function
+applies the sign and nothing else in the model writes it again.
+
 ## What is left out, and what leaving it out could hide
 
 Each of these is absent from the core. What matters is not that they are absent,

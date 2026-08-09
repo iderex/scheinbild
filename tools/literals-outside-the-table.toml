@@ -144,3 +144,32 @@ literals = [2]
 reason = """
 The number of dimensions a spectrogram has, energy first and delay second. A
 shape rather than a value."""
+
+[[site]]
+path = "src/scheinbild_model/units.py"
+definition = "_CYCLE_AVERAGE"
+literals = [0.5]
+reason = """
+The cycle average of a squared sinusoid, which is what makes the intensity
+relation beside it a statement about the intensity an instrument measures rather
+than the instantaneous one. It follows from the shape of a wave, so a table row
+carrying a source for it would have nowhere to point."""
+
+[[site]]
+path = "src/scheinbild_model/streaking_field.py"
+definition = "GAUSSIAN_EXPONENT"
+literals = [2.0]
+reason = """
+The Gaussian two, the same one the pulse module carries. The envelope is
+exp(-a t^2) in the amplitude, so it is exp(-2 a t^2) in the intensity, and a full
+width at half maximum of tau gives a = 2 ln 2 / tau^2. Algebra of the chosen
+shape rather than a measurement."""
+
+[[site]]
+path = "src/scheinbild_model/streaking_field.py"
+definition = "KINETIC_ENERGY_COEFFICIENT"
+literals = [2.0]
+reason = """
+The two in the definition of kinetic energy: a kinetic energy of K belongs to a
+momentum of sqrt(2 K), and an energy is a momentum squared over two. A
+definition rather than a quantity anything measured."""

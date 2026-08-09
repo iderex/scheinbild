@@ -28,6 +28,7 @@ from scheinbild_model.units import (
     attoseconds_to_atomic_time,
     electronvolts_to_hartree,
     hartree_to_electronvolts,
+    peak_intensity_to_atomic_field,
 )
 
 # The relative tolerance the cross checks below are held to. It is looser than
@@ -176,6 +177,48 @@ class TheShippedValuesAgreeWithEachOther(unittest.TestCase):
             derived / CONSTANTS["atomic_unit_of_time_in_second"].value,
             1.0,
             delta=_CROSS_CHECK_TOLERANCE,
+        )
+
+
+class TheIntensityConversionIsTheOneTheFieldQuotes(unittest.TestCase):
+    """The atomic unit of intensity, built here and checked against the literature.
+
+    The conversion is assembled out of three table rows and a prefix factor, and
+    the number it produces is one the strong field literature quotes as a matter
+    of course. None of those rows was written down from that number, so this
+    compares the relation and the rows together against something outside the
+    repository rather than against a second copy of itself.
+    """
+
+    # The atomic unit of intensity as it is quoted, to the five figures it is
+    # usually given to. A tolerance of one part in ten thousand is what five
+    # figures supports, and it is far tighter than any of the errors this test
+    # exists to catch: a missing factor of two, a permittivity left out, or a
+    # square centimetre confused with a square metre are all factors, not parts
+    # in ten thousand.
+    _QUOTED = 3.5094e16
+    _QUOTED_TOLERANCE = 1e-4
+
+    def test_one_atomic_unit_of_intensity_is_the_quoted_value(self) -> None:
+        derived = 1.0 / (peak_intensity_to_atomic_field(1.0) ** 2.0)
+        self.assertAlmostEqual(
+            derived / self._QUOTED, 1.0, delta=self._QUOTED_TOLERANCE
+        )
+
+    def test_an_intensity_of_one_atomic_unit_gives_a_field_of_one(self) -> None:
+        # The inverse statement, and the one that fails if the square root is
+        # applied to the wrong side of the division.
+        derived = 1.0 / (peak_intensity_to_atomic_field(1.0) ** 2.0)
+        self.assertAlmostEqual(peak_intensity_to_atomic_field(derived), 1.0, places=12)
+
+    def test_four_times_the_intensity_is_twice_the_field(self) -> None:
+        # A conversion applied as a factor rather than as a square root passes
+        # every absolute check above if the factor happens to be right, and
+        # fails this one.
+        self.assertAlmostEqual(
+            peak_intensity_to_atomic_field(4e12) / peak_intensity_to_atomic_field(1e12),
+            2.0,
+            places=12,
         )
 
 

@@ -19,17 +19,27 @@ defect at that call site. It is not an invitation to add a conversion inside the
 function, because that is what turns one conversion into two and makes the
 second one invisible.
 
-This module holds no number. Every factor it applies is read out of the constant
-table beside it, which is the one place in the tree that may carry a numeric
-literal with physics in it. Nothing here does arithmetic on a factor either: the
-attoseconds in one atomic unit of time is a product of two table rows and is
-computed once at import, so the two rows stay separately citable.
+Every quantity this module applies is read out of the constant table beside it,
+which is the one place in the tree that may carry a numeric literal with physics
+in it. Where a conversion needs more than one row, the rows are combined here
+once at import rather than written down as a single number, so that each of them
+stays separately citable: the attoseconds in one atomic unit of time is a product
+of two rows, and the intensity one atomic unit of field carries is built from
+three rows and a prefix factor.
 
-The functions take and return plain floats and use nothing but multiplication
-and division, so they work unchanged on whatever array type this model later
-carries. That is a property of how they are written rather than a promise, and
-this package has no array dependency today.
+The one literal below carries no physics. It is the cycle average of a squared
+sinusoid, which follows from the shape of a wave rather than from any
+measurement, and it is named and argued for where it is written.
+
+The functions take and return plain floats. All but one use nothing but
+multiplication and division, so they work unchanged on whatever array type this
+model later carries; the intensity conversion takes a square root, and a square
+root is the reason it is a function rather than a factor. That is a property of
+how they are written rather than a promise, and this package has no array
+dependency today.
 """
+
+from math import sqrt
 
 from scheinbild_model.constants import CONSTANTS
 
@@ -38,6 +48,30 @@ _HARTREE_IN_ELECTRONVOLT = CONSTANTS["hartree_energy_in_electronvolt"].value
 _ATOMIC_TIME_IN_ATTOSECOND = (
     CONSTANTS["atomic_unit_of_time_in_second"].value
     * CONSTANTS["attoseconds_per_second"].value
+)
+
+# The cycle average of a squared sinusoid. It is what makes the relation below a
+# statement about the intensity an experimenter measures, which is averaged over
+# the optical cycle, rather than about the instantaneous one. Algebra rather than
+# a measurement, so it is not a row of the table.
+_CYCLE_AVERAGE = 0.5
+
+# The intensity that one atomic unit of electric field carries, in the units a
+# peak intensity is quoted in. Built from three table rows and one prefix factor
+# at import, so each of them stays separately citable:
+#
+#     I = cycle average * permittivity * speed of light * field squared
+#
+# which is the plane wave relation between a peak field amplitude and the cycle
+# averaged intensity, divided by the number of square centimetres in a square
+# metre because the value it is compared against arrives per square centimetre.
+_ATOMIC_INTENSITY_IN_WATT_PER_SQUARE_CENTIMETRE = (
+    _CYCLE_AVERAGE
+    * CONSTANTS["vacuum_electric_permittivity"].value
+    * CONSTANTS["speed_of_light_in_vacuum"].value
+    * CONSTANTS["atomic_unit_of_electric_field"].value
+    * CONSTANTS["atomic_unit_of_electric_field"].value
+    / CONSTANTS["square_centimetres_per_square_metre"].value
 )
 
 
@@ -72,3 +106,25 @@ def attoseconds_to_atomic_time(time_in_attosecond: float) -> float:
 def atomic_time_to_attoseconds(time_in_atomic_units: float) -> float:
     """A time in atomic units of time, as the same time in attoseconds."""
     return time_in_atomic_units * _ATOMIC_TIME_IN_ATTOSECOND
+
+
+def peak_intensity_to_atomic_field(
+    peak_intensity_in_watt_per_square_centimetre: float,
+) -> float:
+    """A peak intensity, as the peak electric field amplitude in atomic units.
+
+    The boundary crossing inwards for the one parameter of this model that
+    arrives as a power per area. An experimenter quotes a streaking pulse by its
+    peak intensity and the physics is written in terms of the field, so this is
+    where the first becomes the second, once.
+
+    It is a square root rather than a factor, which is why it is a function here
+    and not a constant somebody multiplies by: an intensity is quadratic in the
+    field, so a call site doing its own arithmetic gets the direction right and
+    the power wrong, and a field out by a square root is a streaking amplitude
+    out by a square root.
+    """
+    return sqrt(
+        peak_intensity_in_watt_per_square_centimetre
+        / _ATOMIC_INTENSITY_IN_WATT_PER_SQUARE_CENTIMETRE
+    )
