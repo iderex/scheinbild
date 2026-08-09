@@ -26,9 +26,11 @@ of terms beside every citation, which is written down in
 column rather than a row, and a reader has to be able to disagree with one by
 editing it, so neither shape belongs in this table.
 
-Two rows here are exact by definition rather than measured. The Planck constant
-and the elementary charge have fixed values in the SI, so their rows carry no
-uncertainty and cannot drift with a later adjustment. They are in the table
+Some rows here are exact by definition rather than measured. The Planck
+constant, the elementary charge and the speed of light have fixed values in the
+SI, so their rows carry no uncertainty and cannot drift with a later adjustment,
+and the prefix factors are exact for the same kind of reason. Which rows those
+are is read off their sources rather than counted here. They are in the table
 because the test suite uses them to check the measured rows, which is a check on
 the numbers this file ships rather than a restatement of them.
 """
@@ -183,6 +185,47 @@ _ROWS = (
         source=(
             "SI Brochure, 9th edition 2019, the table of SI prefixes: atto is "
             "10^-18, so this factor is exact by definition. "
+            "https://www.bipm.org/en/publications/si-brochure"
+        ),
+    ),
+    Constant(
+        symbol="atomic_unit_of_electric_field",
+        value=5.14220675112e11,
+        unit="V m^-1",
+        source=(
+            "CODATA 2022 recommended values, atomic unit of electric field, "
+            "standard uncertainty 0.00000000080e11 V m^-1. "
+            "https://physics.nist.gov/cgi-bin/cuu/Value?auefld"
+        ),
+    ),
+    Constant(
+        symbol="vacuum_electric_permittivity",
+        value=8.8541878188e-12,
+        unit="F m^-1",
+        source=(
+            "CODATA 2022 recommended values, vacuum electric permittivity, "
+            "standard uncertainty 0.0000000014e-12 F m^-1. "
+            "https://physics.nist.gov/cgi-bin/cuu/Value?ep0"
+        ),
+    ),
+    Constant(
+        symbol="speed_of_light_in_vacuum",
+        value=299792458.0,
+        unit="m s^-1",
+        source=(
+            "CODATA 2022 recommended values, speed of light in vacuum, exact by "
+            "the SI definition of the metre. "
+            "https://physics.nist.gov/cgi-bin/cuu/Value?c"
+        ),
+    ),
+    Constant(
+        symbol="square_centimetres_per_square_metre",
+        value=1e4,
+        unit="cm^2 m^-2",
+        source=(
+            "SI Brochure, 9th edition 2019, the table of SI prefixes: centi is "
+            "10^-2, so a square metre is 10^4 square centimetres and this factor "
+            "is exact by definition. "
             "https://www.bipm.org/en/publications/si-brochure"
         ),
     ),
