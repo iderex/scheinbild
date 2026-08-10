@@ -225,11 +225,25 @@ One workflow is deliberately absent from this list. `Scorecard analysis` runs on
 trigger, so your pull request will not show it. What this section covers is what
 your own pull request publishes.
 
-None of the names above stops a merge. The ruleset on the default branch
-carries no required status check, so a red row and a green one are the same row
-to the merge button. Which of them were meant to block, and what the setting
-would be, is written down in
-[docs/required-checks.md](docs/required-checks.md).
+Most of the names above stop a merge. The ruleset on the default branch requires
+status checks to pass, and this paragraph said it required none until issue #77.
+Which names are required is read off the setting rather than copied here, because
+a list in a document drifts against the thing that decides it and this paragraph
+is what that looks like:
+
+    gh api repos/iderex/scheinbild/rulesets/20529585 --jq '[.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context] | sort | .[]'
+
+Not all of them. `Scorecard analysis` cannot be required, because it has no pull
+request trigger and therefore never publishes a row on your change. The code
+scanning `zizmor` row is not required either; the job beside it is. Which of the
+names were meant to block, what each level costs, and what the ruleset carries
+today are in [docs/required-checks.md](docs/required-checks.md).
+
+That ruleset does not require a branch to be up to date with the base before it
+merges, so a green row can have been produced against a mainline that has since
+moved. And its pull request rule requires zero approving reviews, so what stands
+behind a merge here is the checks and the pull request body, not that anybody
+read it.
 
 ## What a change to a frozen parameter costs
 
@@ -268,18 +282,27 @@ description of one of them.
 ## Sign-off
 
 Every commit needs a `Signed-off-by:` trailer matching its author. `git commit -s`
-writes it. The `DCO sign-off` check refuses a pull request where any commit
-lacks one, so this is enforced rather than requested.
+writes it. The `DCO sign-off` check refuses a pull request where any commit lacks
+one, and that name is in the ruleset's required set, so a missing trailer holds
+the merge rather than only colouring a row.
 
-Whether this repository accepts changes from outside it at all, and under what
-terms, is entry 4 in issue #1 and is not answered. This section does not guess.
-It describes the sign-off the gate already enforces on every commit that reaches
-a pull request here, and it gets the rest of its content when that entry is
-answered.
+Changes from outside this repository are accepted, under that sign-off and under
+this guide, and nothing further is asked. That is the answer to entry 4 in issue
+#1, decided by the maintainer on 2026-08-08, and this section said the question
+was open until then. There is no contributor licence agreement and there will not
+be one: the sign-off is a statement you can make in one command, and the check
+that reads it was already here.
 
-One part of that entry is worth knowing before you start work. A contribution
-that changes a model parameter after the freeze is not a normal patch, and what
-happens to such a change is part of what is still open.
+One part of that entry is worth knowing before you start work, and it is where a
+contribution here does not behave like a contribution elsewhere. A change to a
+model parameter after the freeze is not a normal patch and it is not taken into
+the frozen file. It gets a new frozen set beside the old one, named and dated,
+and the old one stays exactly as it was, which was decided on 2026-08-09.
+
+So such a change is neither refused nor merged into what it disagrees with. It
+lands next to it. That costs a reader one more thing to look at and costs a
+number somebody has already quoted against the earlier state nothing at all,
+which is the trade the section above this one is about.
 
 The [DCO](DCO) text the trailer refers to speaks of the open source licence
 indicated in the file. That licence is AGPL-3.0 and its text is in

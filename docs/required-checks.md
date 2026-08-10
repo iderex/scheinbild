@@ -12,23 +12,45 @@ Nothing here changes any repository setting. This document has no force.
 
 ## What is configured today
 
-Nothing requires any check. That is the state of the repository, not a
-simplification of it:
+Sixteen checks are required, and this section said none were until issue #77.
+That is the state of the repository, not a simplification of it:
 
     gh api repos/iderex/scheinbild/rulesets --jq '.[] | "\(.id) \(.name) \(.target) \(.enforcement)"'
     20529585 gate branch active
 
     gh api repos/iderex/scheinbild/rulesets/20529585 --jq '{bypass: .bypass_actors, rules: [.rules[].type]}'
-    {"bypass":[],"rules":["deletion","non_fast_forward","pull_request"]}
+    {"bypass":[],"rules":["deletion","non_fast_forward","pull_request","required_status_checks"]}
 
 One ruleset, active on the default branch, with no bypass actors. It refuses a
-deletion of the branch, refuses a non fast forward push, and requires changes to
-arrive as a pull request. There is no `required_status_checks` rule in it, so
-every check name below can be red at the moment a merge button is pressed and
-nothing in the repository objects.
+deletion of the branch, refuses a non fast forward push, requires changes to
+arrive as a pull request, and requires status checks to pass.
 
-The pull request rule it does carry requires zero approving reviews, so it
-enforces the shape of the change and not that anybody read it.
+Which ones is read rather than restated, because a list here drifts against the
+setting that decides it, and this section is what happened the last time one did:
+
+    gh api repos/iderex/scheinbild/rulesets/20529585 --jq '[.rules[] | select(.type=="required_status_checks") | .parameters.required_status_checks[].context] | sort | .[]'
+
+What that printed when this paragraph was written was the sixteen names marked
+below as intended to block, and nothing else. `Scorecard analysis` and the code
+scanning `zizmor` row are absent, which is what the levels below ask for.
+
+Two properties of that rule are worth reading off it rather than assuming, and
+both are what a reader of a green pull request would guess wrongly:
+
+    gh api repos/iderex/scheinbild/rulesets/20529585 --jq '[.rules[] | select(.type=="required_status_checks") | .parameters.strict_required_status_checks_policy], [.rules[] | select(.type=="pull_request") | .parameters.required_approving_review_count]'
+    [false]
+    [0]
+
+A branch is not required to be up to date with the base before it merges, so a
+green row can have been produced against a mainline that has since moved. And
+the pull request rule still requires zero approving reviews, so it enforces the
+shape of a change and not that anybody read it.
+
+The section below is kept in the intended tense rather than rewritten in the
+present. What each level costs is the argument for requiring it, and an argument
+is still worth reading after the setting has been made; keeping the two apart is
+also what lets a later reader compare what is required against what was meant to
+be, which is what this document is for.
 
 ## The checks published today
 
@@ -206,23 +228,32 @@ expensive legs join the blocking list. If the answer is that the expensive legs
 run on demand, then a run that never happened leaves the same trace as one that
 was green, and this document would have to say so about each of them.
 
-## The setting a person would have to change
+## The setting that carries this, and what changing it costs
 
 The `gate` ruleset on the default branch, id `20529585`, under Settings, Rules,
-Rulesets. Adding the rule that requires status checks to pass, and listing the
-names above that are marked as intended to block, is what would give this
-document force. Until somebody does that, this file records an intention and the
-merge button does not read it.
+Rulesets. It carries the rule that requires status checks to pass and the names
+listed by the command at the top of this document.
+
+That setting is where the force is. This file is still a record of an intention
+and the merge button still does not read it: a name removed from the ruleset
+stops blocking whether or not the paragraph below it still says it should, and
+nothing in the tree would notice. What this document is good for is the
+comparison, which is why the intended levels are kept in their own tense.
+
+A name added to the published set does not join the required set on its own. The
+two commands at the top say what is required and the section above says what is
+published, and a check that runs and is not required is the state this whole
+document exists to make visible.
 
 ## A disagreement this document used to carry, and how it was settled
 
 The comment on that job used to say the check run name was matched by the
 "Protect main" ruleset's required status check. There is no ruleset of that name
-here, the one ruleset is named `gate`, and it carries no required status check
-for that name or any other, so the sentence described a configuration this
-repository does not have. This document recorded the disagreement and left the
-repair to issue #47, because issue #21's own boundary was that it changed no
-workflow file and no setting.
+here, the one ruleset is named `gate`, and at the time it carried no required
+status check for that name or any other, so the sentence described a
+configuration this repository did not have. This document recorded the
+disagreement and left the repair to issue #47, because issue #21's own boundary
+was that it changed no workflow file and no setting.
 
 Issue #47 rewrote the comment. What was correct in it survives, because the
 technical point was never the wrong part: a check run takes the job id when no
