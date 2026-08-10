@@ -1,7 +1,7 @@
-"""The assembly is a sum, the lines sit where the data file puts them, and a short scan is refused.
+"""The assembly is a sum, the run names its lines, and a short scan is refused.
 
-Three properties, and the first two are the ones a two line special case would
-quietly break.
+The first two properties are the ones a two line special case would quietly
+break.
 
 That the assembled spectrogram is the sum of the single line traces is asserted
 as an exact array equality rather than as a closeness. It is what makes the
@@ -15,6 +15,12 @@ comes from outside this package. The binding energies and the cross sections are
 in the atomic data file with their sources, so the cases below read the file
 rather than repeating the numbers, and a run whose lines moved would move away
 from what the file says rather than away from a number a test author chose.
+
+Which lines a run assembles comes out of its manifest, and the case that decides
+whether that was worth doing is the two line run reproducing the two line
+caller's output byte for byte rather than closely. The near miss for the list
+itself is a name written twice, which sums one trace into the picture at twice
+its strength and looks like a strong line rather than like a mistake.
 
 A scan too short to separate an amplitude from a phase is refused, and the near
 miss is one delay step: the scan that just covers the minimum is accepted and
@@ -33,18 +39,32 @@ from scheinbild_model.assembly import (
     ENERGY_FIRST,
     ENERGY_POINTS,
     ENERGY_STEP,
+    LINE_NAMES,
+    LINE_SOURCES,
     MINIMUM_CYCLES,
     NEON_MAIN_LINE_NAMES,
     AssemblyRefused,
     assemble,
     delay_axis_attosecond,
     energy_axis_electronvolt,
+    entries_for,
+    line_names,
+    line_sources,
     lines_of,
+    merge,
+    named_lines_spectrogram,
     neon_main_lines_spectrogram,
     relative_strengths,
     streaking_period_attosecond,
 )
-from scheinbild_model.atomic_data import neon_main_lines, relative_cross_section
+from scheinbild_model.atomic_data import (
+    NEON_2P_SHAKE_UP_SATELLITES,
+    NEON_MAIN_LINES,
+    AtomicDataRefused,
+    neon_2p_shake_up_satellites,
+    neon_main_lines,
+    relative_cross_section,
+)
 from scheinbild_model.manifest import Manifest
 from scheinbild_model.pulse import CENTRAL_ENERGY, CHIRP, TIME_GRID_HALF_WIDTH
 from scheinbild_model.pulse import DURATION as PULSE_DURATION
@@ -125,6 +145,8 @@ def _parameters(**overrides: object) -> dict[str, object]:
         ENERGY_STEP: _ENERGY_STEP_ELECTRONVOLT,
         ENERGY_POINTS: _ENERGY_POINTS,
         MINIMUM_CYCLES: _MINIMUM_CYCLES,
+        LINE_SOURCES: NEON_MAIN_LINES,
+        LINE_NAMES: " ".join(NEON_MAIN_LINE_NAMES),
         parameter_name("2p", INTRINSIC_DELAY): 0.0,
         parameter_name("2s", INTRINSIC_DELAY): 21.0,
     }
@@ -211,6 +233,149 @@ class TheAssemblyIsTheSumOfItsLines(unittest.TestCase):
     def test_an_empty_set_of_lines_is_refused(self) -> None:
         with self.assertRaises(AssemblyRefused):
             assemble(_manifest(), ())
+
+
+class ARunCarriesTheLinesItNames(unittest.TestCase):
+    """The set of lines comes out of the manifest, and the two line run is unmoved.
+
+    The first case is the one the rest of milestone 5 rests on. The two line
+    spectrogram assembled from the manifest has to be the same bytes as the one
+    the two line caller produces, not the same to within a tolerance, because
+    docs/decisions/determinism-and-seeding.md chose byte identical deliberately
+    and a refactor compared with a tolerance is a refactor that moved the output
+    by an amount nobody looked at.
+    """
+
+    def test_the_two_line_run_is_byte_for_byte_what_the_two_line_caller_makes(
+        self,
+    ) -> None:
+        manifest = _manifest()
+        named = named_lines_spectrogram(manifest)
+        pair = neon_main_lines_spectrogram(manifest)
+        self.assertTrue(
+            np.array_equal(named.counts, pair.counts),
+            "The run that names its lines does not reproduce the two line caller.",
+        )
+        self.assertTrue(
+            np.array_equal(
+                named.energy_axis_electronvolt, pair.energy_axis_electronvolt
+            )
+        )
+        self.assertTrue(
+            np.array_equal(named.delay_axis_attosecond, pair.delay_axis_attosecond)
+        )
+        # One manifest describes both, so the digest is the same digest rather
+        # than an equal one. A run whose set of lines was not in its description
+        # could not have said that.
+        self.assertEqual(named.manifest.digest(), pair.manifest.digest())
+
+    def test_the_order_the_names_are_written_in_is_the_order_they_are_summed(
+        self,
+    ) -> None:
+        # Not decoration. The first name is the reference the strengths are
+        # taken against, so the reversed run is a different picture rather than
+        # the same one rearranged.
+        reversed_names = " ".join(reversed(NEON_MAIN_LINE_NAMES))
+        self.assertEqual(
+            line_names(_manifest(**{LINE_NAMES: reversed_names})),
+            tuple(reversed(NEON_MAIN_LINE_NAMES)),
+        )
+        self.assertFalse(
+            np.array_equal(
+                named_lines_spectrogram(
+                    _manifest(**{LINE_NAMES: reversed_names})
+                ).counts,
+                named_lines_spectrogram(_manifest()).counts,
+            )
+        )
+
+    def test_a_run_naming_one_line_assembles_that_line_alone(self) -> None:
+        # Without this the case above would also pass against a caller that
+        # ignored the manifest and assembled both lines whatever it was asked.
+        manifest = _manifest(**{LINE_NAMES: "2p"})
+        by_hand = assemble(manifest, lines_of(manifest, neon_main_lines(), ("2p",)))
+        self.assertTrue(
+            np.array_equal(named_lines_spectrogram(manifest).counts, by_hand.counts)
+        )
+
+    def test_stray_whitespace_describes_the_same_run(self) -> None:
+        self.assertEqual(
+            line_names(_manifest(**{LINE_NAMES: "  2p   2s  "})), ("2p", "2s")
+        )
+
+    def test_a_name_written_twice_is_refused(self) -> None:
+        # The near miss that matters. A repeated name sums the same trace twice,
+        # which is a line at twice its strength and looks like a strong line
+        # rather than like a mistake.
+        with self.assertRaises(AssemblyRefused):
+            line_names(_manifest(**{LINE_NAMES: "2p 2s 2p"}))
+
+    def test_a_run_naming_no_lines_is_refused(self) -> None:
+        for value in ("", "   "):
+            with self.subTest(value=value):
+                with self.assertRaises(AssemblyRefused):
+                    line_names(_manifest(**{LINE_NAMES: value}))
+
+    def test_a_set_of_lines_that_is_not_a_string_is_refused(self) -> None:
+        # A manifest holds numbers, strings and booleans, so a list arrives as a
+        # string or it does not arrive, and a number here is somebody assuming
+        # otherwise.
+        with self.assertRaises(AssemblyRefused):
+            line_names(_manifest(**{LINE_NAMES: 2}))
+
+    def test_a_line_no_named_file_carries_is_refused(self) -> None:
+        with self.assertRaises(AssemblyRefused):
+            named_lines_spectrogram(_manifest(**{LINE_NAMES: "2p 2d"}))
+
+
+class ARunCarriesTheFilesItReads(unittest.TestCase):
+    def test_the_files_come_out_of_the_manifest(self) -> None:
+        self.assertEqual(line_sources(_manifest()), (NEON_MAIN_LINES,))
+
+    def test_a_run_reading_both_shipped_files_sees_every_line_in_them(self) -> None:
+        # The property the satellite work rests on. Reading another file is a
+        # longer manifest value and nothing else, and the lines it carries are
+        # then lines the run may name.
+        both = f"{NEON_MAIN_LINES} {NEON_2P_SHAKE_UP_SATELLITES}"
+        entries = entries_for(_manifest(**{LINE_SOURCES: both}))
+        self.assertEqual(
+            set(entries),
+            set(neon_main_lines()) | set(neon_2p_shake_up_satellites()),
+        )
+
+    def test_nothing_in_the_merge_records_which_file_a_line_came_from(self) -> None:
+        # The structural half of docs/decisions/satellite-lines.md. What comes
+        # back is a mapping of lines, and an entry out of it is the same object
+        # the file loaded, so there is nowhere for a marker to have been added.
+        both = f"{NEON_MAIN_LINES} {NEON_2P_SHAKE_UP_SATELLITES}"
+        entries = entries_for(_manifest(**{LINE_SOURCES: both}))
+        for name, entry in neon_2p_shake_up_satellites().items():
+            with self.subTest(line=name):
+                self.assertEqual(entries[name], entry)
+
+    def test_a_line_two_files_both_carry_is_refused(self) -> None:
+        # The near miss, built here rather than out of the tree: the shipped
+        # files share no name today, and a case built out of them would prove
+        # the state of the tree rather than the guard.
+        entries = neon_main_lines()
+        with self.assertRaises(AssemblyRefused):
+            merge([("first.toml", entries), ("second.toml", entries)])
+
+    def test_a_file_the_package_does_not_ship_is_refused(self) -> None:
+        for named in ("../../../etc/passwd", "neon-main-lines.toml.bak", "nothing"):
+            with self.subTest(named=named):
+                with self.assertRaises(AtomicDataRefused):
+                    entries_for(_manifest(**{LINE_SOURCES: named}))
+
+    def test_a_file_named_twice_is_refused(self) -> None:
+        with self.assertRaises(AssemblyRefused):
+            line_sources(
+                _manifest(**{LINE_SOURCES: f"{NEON_MAIN_LINES} {NEON_MAIN_LINES}"})
+            )
+
+    def test_a_run_reading_no_file_is_refused(self) -> None:
+        with self.assertRaises(AssemblyRefused):
+            line_sources(_manifest(**{LINE_SOURCES: ""}))
 
 
 class TheStrengthsAreTheCrossSectionRatio(unittest.TestCase):
