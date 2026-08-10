@@ -84,6 +84,11 @@ from typing import Mapping, Optional, Sequence, Union
 # reads and not a path that only exists in a checkout.
 DATA_DIRECTORY = "data"
 
+# What an atomic data file is called. The set a run may name is read off the
+# directory rather than kept as a list, and this is what separates a data file
+# in there from anything else that lands beside one.
+SUFFIX = ".toml"
+
 NEON_MAIN_LINES = "neon-main-lines.toml"
 
 NEON_2P_SHAKE_UP_SATELLITES = "neon-2p-shake-up-satellites.toml"
@@ -659,6 +664,43 @@ def neon_2p_shake_up_satellites() -> Mapping[str, EmissionLine]:
     not something the model branches on.
     """
     return _packaged(NEON_2P_SHAKE_UP_SATELLITES)
+
+
+def shipped_files() -> tuple[str, ...]:
+    """Every atomic data file inside this package, sorted.
+
+    Read off the package rather than written out here, so that shipping another
+    file is shipping a file. A run names the file it wants and this is the set
+    that name is held against, so a list kept by hand would be a list that
+    decides which of the shipped files a run may read.
+    """
+    directory = files(__package__ or "") / DATA_DIRECTORY
+    return tuple(
+        sorted(
+            entry.name for entry in directory.iterdir() if entry.name.endswith(SUFFIX)
+        )
+    )
+
+
+def packaged(name: str) -> Mapping[str, EmissionLine]:
+    """One shipped data file by name, or a refusal naming what is shipped.
+
+    The name comes from the manifest, so it is a value from outside this package
+    and it is held to the files the package ships rather than resolved against
+    the machine the run happens to be on. A name that is not one of them is
+    refused rather than opened: `../` in a run description is not a data file
+    somebody meant to read, and a path that resolves on one host and not on
+    another is a run nobody else can reproduce.
+    """
+    shipped = shipped_files()
+    if name not in shipped:
+        raise AtomicDataRefused(
+            f"The run asks to read the atomic data file {name!r} and this package "
+            f"does not ship it. It ships: {list(shipped)}. A run reads the files "
+            "inside the package rather than a path on the machine it is running "
+            "on, so that the same manifest describes the same numbers everywhere."
+        )
+    return _packaged(name)
 
 
 def _packaged(name: str) -> Mapping[str, EmissionLine]:

@@ -25,11 +25,16 @@ from scheinbild_model.atomic_data import (
     CALCULATED,
     LINEAR_IN_THE_LOGARITHMS,
     MEASURED,
+    NEON_2P_SHAKE_UP_SATELLITES,
+    NEON_MAIN_LINES,
     AtomicDataRefused,
     FetchStep,
     load,
+    neon_2p_shake_up_satellites,
     neon_main_lines,
+    packaged,
     relative_cross_section,
+    shipped_files,
 )
 
 # The energy of the Ne II level 2s.2p6 2S1/2 above the Ne II ground level, out of
@@ -372,6 +377,48 @@ class TheShippedFileObeysItsOwnRule(unittest.TestCase):
                         self.assertGreaterEqual(
                             table.megabarn_at(energy), min(here, there)
                         )
+
+
+class AFileIsReadByNameOrItIsNotRead(unittest.TestCase):
+    """What a run may name, and what happens to a name that is not one of them.
+
+    The name arrives in the manifest, which is a description written outside this
+    package, so this is where a value from outside meets the filesystem. It is
+    held against what the package ships rather than resolved, and the set is read
+    off the package so that shipping another file is shipping a file.
+    """
+
+    def test_the_shipped_files_are_the_ones_the_loaders_name(self) -> None:
+        self.assertEqual(
+            shipped_files(), (NEON_2P_SHAKE_UP_SATELLITES, NEON_MAIN_LINES)
+        )
+
+    def test_a_shipped_file_read_by_name_is_the_file_its_loader_reads(self) -> None:
+        self.assertEqual(packaged(NEON_MAIN_LINES), neon_main_lines())
+        self.assertEqual(
+            packaged(NEON_2P_SHAKE_UP_SATELLITES), neon_2p_shake_up_satellites()
+        )
+
+    def test_a_name_reaching_outside_the_package_is_refused(self) -> None:
+        # The one that matters. A run description is data from outside, and a
+        # name that walked up out of the package would read a file that exists
+        # on one host and not on the next.
+        for named in ("../pyproject.toml", "../../../etc/passwd", "data/../units.py"):
+            with self.subTest(named=named):
+                with self.assertRaises(AtomicDataRefused):
+                    packaged(named)
+
+    def test_a_name_the_package_does_not_ship_is_refused(self) -> None:
+        with self.assertRaises(AtomicDataRefused):
+            packaged("neon-main-lines.toml.bak")
+
+    def test_the_refusal_names_what_is_shipped(self) -> None:
+        # So that somebody who mistyped a file name reads what they could have
+        # written instead of going to look for the list.
+        with self.assertRaises(AtomicDataRefused) as refused:
+            packaged("nothing")
+        for name in shipped_files():
+            self.assertIn(name, str(refused.exception))
 
 
 if __name__ == "__main__":

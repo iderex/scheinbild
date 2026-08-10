@@ -19,6 +19,30 @@ tolerance.
 `neon_main_lines` is the caller that supplies the two. It is a caller and not a
 mode.
 
+## A run names its own lines
+
+`named_lines_spectrogram` is the general caller, and what it supplies comes out of the
+manifest: which data files to read, and which lines out of them to assemble, in
+the order they are summed. A run carrying a satellite set is then a manifest
+naming another file and some more line names, and nothing here is rewritten for
+it.
+
+Both arrive as one string of names separated by spaces, because a manifest holds
+numbers, strings and booleans and nothing else. That restriction is
+../../docs/decisions/determinism-and-seeding.md's and it is what makes the choice
+of lines part of the run: a set of lines held in the code is a value that
+influences the output and is not in the description of the run, which is exactly
+what the manifest type exists to make impossible.
+
+The order the names are written in is not decoration. It fixes which line the
+strengths are relative to and the order the traces are added in, and that
+determinism record rules out comparing two runs that differ in their last digits
+with a tolerance.
+
+The file names are held against the files the package ships. A name that is not
+one of them is refused rather than opened, so a run description cannot reach a
+path on the host it happens to be running on.
+
 ## Where each of a line's numbers comes from
 
 The binding energy and the cross section come from the atomic data file, with
@@ -74,12 +98,13 @@ which `streaking_map` decides.
 """
 
 from math import pi
+from types import MappingProxyType
 from typing import Mapping, Sequence
 
 import numpy as np
 from numpy.typing import NDArray
 
-from scheinbild_model.atomic_data import EmissionLine, neon_main_lines
+from scheinbild_model.atomic_data import EmissionLine, neon_main_lines, packaged
 from scheinbild_model.manifest import Manifest
 from scheinbild_model.pulse import Pulse
 from scheinbild_model.spectrogram import Spectrogram
@@ -96,6 +121,21 @@ ENERGY_STEP = "energy_grid_step_electronvolt"
 ENERGY_POINTS = "energy_grid_points"
 
 MINIMUM_CYCLES = "delay_scan_minimum_cycles"
+
+# Which data files the run's lines are read out of, and which lines it assembles
+# out of them, in the order they are summed. Both are one string of names
+# separated by spaces, because a manifest holds numbers, strings and booleans and
+# nothing else: a list has no rendering that is identical on every machine, and a
+# value the canonical form cannot render is a value the digest cannot see. So a
+# run that names its lines is a run the freeze record covers, which a list held
+# in the code would not have been.
+#
+# One name is separated from the next by a space. Splitting on whitespace with no
+# separator given collapses runs of it and drops the empty pieces at both ends,
+# so a value written with a stray double space describes the same run as one
+# written tidily, and a run description that differs only in that is not two runs.
+LINE_SOURCES = "line_sources"
+LINE_NAMES = "line_names"
 
 # The two lines of the shipped data file, in the order they are assembled. The
 # order decides which line the strengths are relative to and it decides the
@@ -327,3 +367,102 @@ def neon_main_lines_spectrogram(manifest: Manifest) -> Spectrogram:
     """
     entries = neon_main_lines()
     return assemble(manifest, lines_of(manifest, entries, NEON_MAIN_LINE_NAMES))
+
+
+def _names(manifest: Manifest, parameter: str) -> tuple[str, ...]:
+    """One manifest parameter as the list of names it holds, or a refusal."""
+    value = manifest.parameter(parameter)
+    if not isinstance(value, str):
+        raise AssemblyRefused(
+            f"The parameter {parameter!r} is {value!r}, and it is read as a list "
+            "of names separated by spaces. A manifest holds numbers, strings and "
+            "booleans, because those are what render identically on every "
+            "machine, so a list arrives as a string or it does not arrive."
+        )
+    names = tuple(value.split())
+    if not names:
+        raise AssemblyRefused(
+            f"The parameter {parameter!r} names nothing. A run that names no "
+            "lines assembles an empty picture rather than failing, and an empty "
+            "picture is a result somebody has to notice by looking at it."
+        )
+    repeated = tuple(sorted({name for name in names if names.count(name) > 1}))
+    if repeated:
+        raise AssemblyRefused(
+            f"The parameter {parameter!r} names {list(repeated)} more than once. "
+            "The assembly sums what it is given in the order it is given, so a "
+            "name written twice is a line at twice its strength, which is a "
+            "picture that looks like a strong line rather than like a mistake."
+        )
+    return names
+
+
+def line_sources(manifest: Manifest) -> tuple[str, ...]:
+    """The atomic data files this run reads its lines out of."""
+    return _names(manifest, LINE_SOURCES)
+
+
+def line_names(manifest: Manifest) -> tuple[str, ...]:
+    """The lines this run assembles, in the order they are summed.
+
+    The order is part of the run rather than of the data file. It decides which
+    line the relative strengths are taken against and it decides the order the
+    traces are added in, and ../../docs/decisions/determinism-and-seeding.md
+    rules out comparing two runs that differ in the last digits with a tolerance.
+    """
+    return _names(manifest, LINE_NAMES)
+
+
+def merge(
+    files: Sequence[tuple[str, Mapping[str, EmissionLine]]],
+) -> Mapping[str, EmissionLine]:
+    """Several data files as one mapping of lines, refusing a name both carry.
+
+    Nothing about the merge says what kind of line came from which file. A name
+    is looked up in what the run asked to read, and which file it was found in is
+    not recorded anywhere the model can reach.
+
+    A name two of the files both carry is refused rather than resolved by order.
+    Two files holding one line is two sources for it, which
+    ../../docs/decisions/atomic-data.md records as a disagreement inside an entry
+    and never settles by letting one file win, and reading order is not a choice
+    anybody made.
+    """
+    merged: dict[str, EmissionLine] = {}
+    carried_by: dict[str, str] = {}
+    for source, entries in files:
+        for name, entry in entries.items():
+            if name in merged:
+                raise AssemblyRefused(
+                    f"The line {name!r} is carried by {carried_by[name]!r} and by "
+                    f"{source!r}, and this run reads both. Which of the two the "
+                    "model would take is decided by reading order, which is not a "
+                    "choice anybody made. Two files holding one line are two "
+                    "sources for it, and a disagreement between sources is "
+                    "recorded inside the entry rather than settled here."
+                )
+            merged[name] = entry
+            carried_by[name] = source
+    return MappingProxyType(merged)
+
+
+def entries_for(manifest: Manifest) -> Mapping[str, EmissionLine]:
+    """Every line the data files this run names carry, as one mapping.
+
+    Read here rather than passed in, so that adding a set of lines to a run is
+    adding a file name and some line names to its manifest.
+    """
+    return merge([(source, packaged(source)) for source in line_sources(manifest)])
+
+
+def named_lines_spectrogram(manifest: Manifest) -> Spectrogram:
+    """The lines this run names, over the delay scan it describes.
+
+    The general caller. It reads which files to open and which lines to assemble
+    out of the manifest, so a run carrying a different set of lines is a
+    different manifest and not different code, and every line it assembled is in
+    the description the freeze record hashes.
+    """
+    return assemble(
+        manifest, lines_of(manifest, entries_for(manifest), line_names(manifest))
+    )

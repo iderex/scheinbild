@@ -67,6 +67,41 @@ that rule and it fails closed in both directions: an entry naming a file that is
 not there, or waiving a literal the named definition no longer holds, is refused
 as loudly as an unwaived literal is.
 
+`no-line-kind-in-the-model`. Nothing in the forward model may name what kind of
+line a line is, per docs/decisions/satellite-lines.md. A line has a binding
+energy, a relative strength and an intrinsic delay, and a model that could tell
+a satellite from a main line is a model whose output carries a marker the real
+measurement does not have. The analysis reading such an output would be handed
+where the contamination is, which is the one thing this board exists to keep it
+from having.
+
+The rule is over IDENTIFIERS and not over text. A docstring saying a line has no
+kind is not refused, and several in this tree say it, because arguing why the
+model may not know is the reason the rule exists.
+
+Two shapes are refused and the difference between them is where a name may be
+written rather than what it says. A name that merely CARRIES one of the words is
+refused where the model would read a value off a line: a parameter, an
+attribute, a keyword argument at a call site, an annotated field. A name that
+ASKS what kind a line is, one starting with `is` or `has` or ending in `flag`
+beside one of those words, is refused wherever it appears, and so is the small
+set of names below that ask it without using any of the words at all.
+
+That split is what lets the loader keep its name. This package ships the
+satellite rows in their own file, `neon_2p_shake_up_satellites` reads it and
+`NEON_2P_SHAKE_UP_SATELLITES` is the file's name, and neither is a line saying
+what it is: a file name is chosen by whoever assembles the run and the model
+never sees it. A rule refusing every identifier carrying the word would refuse
+those two, and the repair a person would reach for is to rename the file, which
+buys nothing and costs the reader the one place the arrangement is visible.
+
+It is a floor and the bound is stated here rather than left to be assumed. A
+flag called `kind`, or an integer whose meaning is written down somewhere else,
+walks through it, and so does a module level name carrying one of the words that
+some `if` further down reads. What it catches is the shape somebody actually
+writes when a satellite turns out to be inconvenient, and the review is what
+catches the rest.
+
 ## The register, and why the rule needs one
 
 What separates a physics number from a Gaussian's twos is where the number came
@@ -215,6 +250,33 @@ NOT_IN_A_DEFINITION = "<module>"
 # The register of literals that are not physics numbers, beside this file so
 # that the rule and the exemptions to it are read together.
 LITERAL_REGISTER = Path(__file__).with_name("literals-outside-the-table.toml")
+
+# The words that say what kind of line a line is. Compared against the name with
+# its underscores removed and its case dropped, so `is_satellite`, `isSatellite`
+# and `IS_SATELLITE` are one shape rather than three patterns.
+LINE_KIND_WORDS = ("satellite", "shakeup", "mainline")
+
+# What turns a name carrying one of those words into a question about a line.
+# A name that asks is refused wherever it is written; a name that only carries
+# one of the words is refused where a value is read off a line and nowhere else.
+ASKS_AT_THE_START = ("is", "has")
+ASKS_AT_THE_END = ("flag",)
+
+# The names that ask what kind of line it is without using any of those words.
+# Matched whole rather than as substrings, because `NEON_MAIN_LINE_NAMES` is a
+# caller saying which lines it supplies and is not a line saying what it is.
+LINE_KIND_NAMES = (
+    "linekind",
+    "kindofline",
+    "linetype",
+    "typeofline",
+    "lineclass",
+)
+
+# The package the rule is about. The analysis is outside it deliberately: what
+# the standard analysis may know is its own question, and a rule reaching into
+# it here would answer that question in the wrong file.
+THE_MODEL_PACKAGE = "scheinbild_model"
 
 
 class Refusal(NamedTuple):
@@ -386,6 +448,104 @@ def plotting_refusals(path: Path, source: str, tree: ast.Module) -> Iterator[Ref
             "in this file forces a non interactive one. A library that has "
             "already chosen does not choose again, so this opens a window on the "
             "machine that has one. See docs/decisions/test-environment.md.",
+        )
+
+
+def _flattened(name: str) -> str:
+    """One identifier, with its case and its underscores taken off.
+
+    So that a rule written once catches every spelling somebody reaches for.
+    `is_satellite`, `isSatellite` and `IS_SATELLITE` are the same name to this,
+    and that is what lets the vocabulary above hold shapes rather than
+    variations.
+    """
+    return name.replace("_", "").lower()
+
+
+def _carries_a_kind_word(name: str) -> bool:
+    return any(word in _flattened(name) for word in LINE_KIND_WORDS)
+
+
+def _asks_what_kind_of_line(name: str) -> bool:
+    """Whether this name is a question about one line rather than a description.
+
+    `is_satellite` asks and `neon_2p_shake_up_satellites` does not. The first is
+    a per line answer the model would branch on, and the second is the name of a
+    file somebody chose to read, which the model never sees.
+    """
+    flattened = _flattened(name)
+    if flattened in LINE_KIND_NAMES:
+        return True
+    if not _carries_a_kind_word(flattened):
+        return False
+    return flattened.startswith(ASKS_AT_THE_START) or flattened.endswith(
+        ASKS_AT_THE_END
+    )
+
+
+def _where_a_line_is_read(tree: ast.Module) -> Iterator[tuple[str, int, str]]:
+    """Every name at which this file would read a value off one line.
+
+    Not every name in the file. A module level constant carrying one of the
+    words is a name somebody chose for a file or for a set of lines a caller
+    supplies, and refusing it would refuse the loader that reads the shipped
+    satellite rows. What is left is where a per line value arrives: a parameter,
+    an attribute, a keyword at a call site, and a declared field.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, ast.arg):
+            yield node.arg, node.lineno, "a parameter"
+        elif isinstance(node, ast.Attribute):
+            yield node.attr, node.lineno, "an attribute"
+        elif isinstance(node, ast.keyword) and node.arg is not None:
+            yield node.arg, node.value.lineno, "a keyword argument"
+        elif isinstance(node, ast.AnnAssign) and isinstance(node.target, ast.Name):
+            yield node.target.id, node.lineno, "a declared field"
+
+
+def _where_a_name_is_defined(tree: ast.Module) -> Iterator[tuple[str, int, str]]:
+    """Every other name this file brings into being.
+
+    The sites the pass above leaves out, because a question about a line is
+    refused wherever it is written and not only where a line is read. A function
+    called `is_satellite` is the shape this adds.
+    """
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            yield node.name, node.lineno, "a function"
+        elif isinstance(node, ast.ClassDef):
+            yield node.name, node.lineno, "a class"
+        elif isinstance(node, ast.Assign):
+            for target in node.targets:
+                if isinstance(target, ast.Name):
+                    yield target.id, node.lineno, "a name being assigned to"
+
+
+def line_kind_refusals(path: Path, tree: ast.Module) -> Iterator[Refusal]:
+    """Refuse a name in the forward model that says what kind of line a line is."""
+    if _package_of(path) != THE_MODEL_PACKAGE:
+        return
+    read = list(_where_a_line_is_read(tree))
+    refused = {
+        (name, line): what for name, line, what in read if _carries_a_kind_word(name)
+    }
+    for name, line, what in read + list(_where_a_name_is_defined(tree)):
+        if _asks_what_kind_of_line(name):
+            refused.setdefault((name, line), what)
+    for (name, line), what in refused.items():
+        yield Refusal(
+            "no-line-kind-in-the-model",
+            str(path),
+            line,
+            f"{what} called {name!r}. A line in this model has a binding energy, "
+            "a relative strength and an intrinsic delay, and nothing that says "
+            "which kind of line it is. A model that could tell a satellite from "
+            "a main line produces output carrying a marker the real measurement "
+            "does not have, and the standard analysis reading that output would "
+            "be handed where the contamination is. See "
+            "docs/decisions/satellite-lines.md. A docstring arguing this is not "
+            "refused, and neither is the name of a data file a caller chose to "
+            "read; a name asking one line what it is, is.",
         )
 
 
@@ -598,6 +758,7 @@ def refusals_for(path: Path, register: Iterable[WaivedSite] = ()) -> Iterator[Re
     yield from plotting_refusals(path, source, tree)
     yield from network_refusals(path, tree)
     yield from literal_refusals(path, tree, register)
+    yield from line_kind_refusals(path, tree)
 
 
 RULES = (
@@ -607,6 +768,7 @@ RULES = (
     "no-network-capable-import-outside-the-one-exit",
     "no-bare-numeric-literal-outside-the-constant-table",
     "the-literal-register-says-only-what-is-true",
+    "no-line-kind-in-the-model",
 )
 
 

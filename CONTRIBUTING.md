@@ -165,8 +165,9 @@ every document in the tree as broken.
 `Enforce greppable invariants`. The rules that are properties of the source text
 rather than of its behaviour: the import boundary between the forward model and
 the standard analysis, global random state, the plotting import against the
-backend being forced, the one exit the network has, and the numeric literal that
-belongs in the constant table. Red means one of them was broken, and the message
+backend being forced, the one exit the network has, the numeric literal that
+belongs in the constant table, and the name that would tell the model what kind
+of line a line is. Red means one of them was broken, and the message
 names the rule and what failure it prevents rather than the pattern it matched.
 Reproduce with `python -m tools.invariants src`. That run prints the rules it
 applied, which is what a reader should compare a report against rather than the

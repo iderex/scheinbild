@@ -25,6 +25,7 @@ from tools.invariants import (
     Refusal,
     RegisterUnreadable,
     WaivedSite,
+    line_kind_refusals,
     literal_refusals,
     load_literal_register,
     network_refusals,
@@ -383,6 +384,143 @@ class TheRegisterIsRefusedRatherThanGuessedAt(unittest.TestCase):
     def test_a_register_that_cannot_be_read_is_not_an_empty_one(self) -> None:
         with self.assertRaises(RegisterUnreadable):
             load_literal_register(Path("no-such-register.toml"))
+
+
+class TheModelMayNotKnowWhatKindOfLineALineIs(unittest.TestCase):
+    """The rule, the spellings it survives, and the four things it must not touch.
+
+    The near misses here matter more than the hits, and two of them are why the
+    rule is written in two halves rather than as one substring. A rule over text
+    would refuse every docstring in this tree arguing why the model may not know,
+    which is most of the places the argument is written down. A rule refusing the
+    word wherever it appeared would refuse the loader for the shipped satellite
+    file and the constant holding that file's name, and the repair somebody would
+    reach for is to rename the file, which buys the property nothing.
+
+    So a name that carries the word is refused where a value is read off a line,
+    and a name that asks what kind a line is, is refused everywhere.
+    """
+
+    def test_a_parameter_saying_satellite_is_refused(self) -> None:
+        source = "def trace(line, is_satellite):\n    return line\n"
+        found = list(line_kind_refusals(MODEL, parsed(source)))
+        self.assertEqual(rules(found), ["no-line-kind-in-the-model"])
+
+    def test_an_attribute_saying_satellite_is_refused(self) -> None:
+        source = "def widen(line):\n    return line.satellite\n"
+        found = list(line_kind_refusals(MODEL, parsed(source)))
+        self.assertEqual(rules(found), ["no-line-kind-in-the-model"])
+
+    def test_a_keyword_argument_saying_satellite_is_refused(self) -> None:
+        source = "def build(line):\n    return trace(line, satellite=True)\n"
+        found = list(line_kind_refusals(MODEL, parsed(source)))
+        self.assertEqual(rules(found), ["no-line-kind-in-the-model"])
+
+    def test_a_declared_field_saying_satellite_is_refused(self) -> None:
+        source = "class Line:\n    is_satellite: bool\n"
+        found = list(line_kind_refusals(MODEL, parsed(source)))
+        self.assertEqual(rules(found), ["no-line-kind-in-the-model"])
+
+    def test_a_branch_on_a_line_saying_what_it_is_is_refused(self) -> None:
+        # The shape the rule exists for, written out as somebody would write it
+        # the day a satellite turns out to be inconvenient.
+        source = (
+            "def widen(line, width):\n"
+            "    if line.is_satellite:\n"
+            "        return width\n"
+            "    return width\n"
+        )
+        found = list(line_kind_refusals(MODEL, parsed(source)))
+        self.assertEqual(rules(found), ["no-line-kind-in-the-model"])
+
+    def test_the_spelling_does_not_save_it(self) -> None:
+        for name in ("isSatellite", "IS_SATELLITE", "is_shake_up", "satellite_flag"):
+            with self.subTest(name=name):
+                source = f"def trace(line, {name}):\n    return line\n"
+                found = list(line_kind_refusals(MODEL, parsed(source)))
+                self.assertEqual(rules(found), ["no-line-kind-in-the-model"])
+
+    def test_a_name_asking_what_kind_without_the_word_is_refused(self) -> None:
+        for name in ("line_kind", "line_type", "line_class", "kind_of_line"):
+            with self.subTest(name=name):
+                source = f"def trace(line, {name}):\n    return line\n"
+                found = list(line_kind_refusals(MODEL, parsed(source)))
+                self.assertEqual(rules(found), ["no-line-kind-in-the-model"])
+
+    def test_a_question_defined_rather_than_taken_is_refused(self) -> None:
+        # The way past the first half of the rule: ask the question in a
+        # function of your own instead of taking the answer as a parameter.
+        for source in (
+            "def is_satellite(line):\n    return False\n",
+            "class IsMainLine:\n    pass\n",
+            "SHAKE_UP_FLAG = True\n",
+        ):
+            with self.subTest(source=source):
+                found = list(line_kind_refusals(MODEL, parsed(source)))
+                self.assertEqual(rules(found), ["no-line-kind-in-the-model"])
+
+    def test_a_docstring_arguing_the_rule_is_not_refused(self) -> None:
+        # The near miss that decides whether this rule can exist at all. The
+        # argument for it is written in docstrings in this package, and a rule
+        # over text would refuse the sentences that explain it.
+        source = (
+            '"""A line has no field saying whether it is a satellite, and the\n'
+            'model cannot tell a shake-up line from a main line."""\n'
+            "def trace(line):\n"
+            "    return line\n"
+        )
+        self.assertEqual(list(line_kind_refusals(MODEL, parsed(source))), [])
+
+    def test_the_loader_for_the_shipped_satellite_file_is_not_refused(self) -> None:
+        # Both halves of the real case, which is in `atomic_data`. The file is
+        # named by whoever assembles the run and the model never sees the name,
+        # so neither of these is a line saying what it is.
+        source = (
+            'NEON_2P_SHAKE_UP_SATELLITES = "neon-2p-shake-up-satellites.toml"\n'
+            "def neon_2p_shake_up_satellites():\n"
+            "    return _packaged(NEON_2P_SHAKE_UP_SATELLITES)\n"
+        )
+        self.assertEqual(list(line_kind_refusals(MODEL, parsed(source))), [])
+
+    def test_a_caller_naming_which_lines_it_supplies_is_not_refused(self) -> None:
+        # The one character version. `main line` as a substring would refuse
+        # this, which is a caller saying what it assembles rather than a line
+        # saying what it is.
+        source = 'NEON_MAIN_LINE_NAMES = ("2p", "2s")\n'
+        self.assertEqual(list(line_kind_refusals(MODEL, parsed(source))), [])
+
+    def test_an_ordinary_line_is_not_refused(self) -> None:
+        source = (
+            "def trace(line, energy_axis_electronvolt):\n"
+            "    return line.relative_strength\n"
+        )
+        self.assertEqual(list(line_kind_refusals(MODEL, parsed(source))), [])
+
+    def test_the_analysis_is_not_judged_by_this_rule(self) -> None:
+        # Deliberate and stated in the tool. What the standard analysis may know
+        # is its own question, and answering it inside a rule about the model
+        # would answer it in the wrong file.
+        source = "def read(trace, is_satellite):\n    return trace\n"
+        self.assertEqual(list(line_kind_refusals(ANALYSIS, parsed(source))), [])
+
+    def test_a_file_in_neither_package_is_not_judged(self) -> None:
+        source = "def read(trace, is_satellite):\n    return trace\n"
+        self.assertEqual(list(line_kind_refusals(OUTSIDE, parsed(source))), [])
+
+    def test_a_run_over_a_file_applies_the_rule(self) -> None:
+        # The wiring, which the cases above do not reach because they call the
+        # operator. One missing line in `refusals_for` takes the rule out of
+        # every run while the run goes on printing its name, which reads as
+        # coverage rather than as a rule nothing applies.
+        directory = self.enterContext(tempfile.TemporaryDirectory())
+        package = Path(directory) / "src" / "scheinbild_model"
+        package.mkdir(parents=True)
+        judged = package / "widening.py"
+        judged.write_text(
+            "def widen(line, is_satellite):\n    return line\n", encoding="utf-8"
+        )
+        self.assertIn("no-line-kind-in-the-model", rules(refusals_for(judged)))
+        self.assertIn("no-line-kind-in-the-model", RULES)
 
 
 class AFileThatCannotBeReadIsNotAFileThatPassed(unittest.TestCase):
