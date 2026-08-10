@@ -21,11 +21,13 @@ jobs:
   # display name would rename the check run, which is why it is not an edit to
   # make on its own.
   #
-  # Nothing matches that string today. The one ruleset on the default branch
-  # carries no required status check, so no verdict this job reaches can stop a
-  # merge. docs/required-checks.md records that state with the commands that
-  # read it, and the level this check is intended to have if it is ever
-  # required.
+  # The one ruleset on the default branch requires that string today, so a red
+  # verdict here does stop a merge, and this comment said the opposite until
+  # issue #77. That is exactly why a display name added here would be worse than
+  # a rename: it would take the check out of the required set silently, and a
+  # required check that no longer arrives is not a red row, it is a pull request
+  # waiting for a verdict that never comes. docs/required-checks.md carries the
+  # commands that read the setting rather than a copy of its list.
   dependency-review:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -38,7 +40,8 @@ jobs:
         with:
           # Fail closed: any known vulnerability at low severity or above, in a
           # dependency this pull request introduces or upgrades, fails this
-          # job. Failing the job is the whole of the effect. Nothing requires
-          # this check, so a red run here leaves the merge button exactly as it
-          # was. Raise the threshold only with a documented reason.
+          # job. The ruleset requires this check, so a red run here holds the
+          # merge as well. The advisory database moves on its own, which means
+          # that can happen to a branch that changed nothing. Raise the
+          # threshold only with a documented reason.
           fail-on-severity: low
