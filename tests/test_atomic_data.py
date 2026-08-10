@@ -22,7 +22,9 @@ backwards.
 import unittest
 
 from scheinbild_model.atomic_data import (
+    CALCULATED,
     LINEAR_IN_THE_LOGARITHMS,
+    MEASURED,
     AtomicDataRefused,
     FetchStep,
     load,
@@ -55,6 +57,7 @@ _THE_COLUMNS_CROSS_ABOVE_ELECTRONVOLT = 300.0
 _GOOD_BINDING = """
 [line.binding_energy]
 unit = "eV"
+method = "measured"
 value = 21.5
 source = "A citation precise enough to find the number again."
 terms = "Public domain, so the value stands here rather than a fetch step."
@@ -63,6 +66,7 @@ terms = "Public domain, so the value stands here rather than a fetch step."
 _GOOD_CROSS = """
 [line.cross_section]
 unit = "Mb"
+method = "calculated"
 photon_energy_electronvolt = [80.0, 132.3, 200.0]
 value = [4.0, 2.0, 1.0]
 source = "A citation precise enough to find the table again."
@@ -204,6 +208,7 @@ class ANumberThatMayNotBeShippedCarriesItsFetchStep(unittest.TestCase):
     _FETCHED = """
 [line.cross_section]
 unit = "Mb"
+method = "calculated"
 fetch = "Retrieve table 3 from the citation above and write the rows here."
 source = "A citation precise enough to find the table again."
 terms = "The compiled table may not be redistributed, so only the citation is here."
@@ -232,6 +237,7 @@ class TheInterpolationReadsTheTableItWasGiven(unittest.TestCase):
     _INEXACT = """
 [line.cross_section]
 unit = "Mb"
+method = "calculated"
 photon_energy_electronvolt = [799.7, 1961.9]
 value = [7.1334, 1.7095]
 source = "A citation precise enough to find the table again."
@@ -279,8 +285,24 @@ class TheShippedFileObeysItsOwnRule(unittest.TestCase):
             with self.subTest(name=name):
                 self.assertTrue(line.binding_energy.source.strip())
                 self.assertTrue(line.binding_energy.terms.strip())
-                self.assertTrue(line.cross_section.source.strip())
-                self.assertTrue(line.cross_section.terms.strip())
+                cross = line.cross_section
+                assert cross is not None  # every main line entry tabulates one
+                self.assertTrue(cross.source.strip())
+                self.assertTrue(cross.terms.strip())
+
+    def test_the_binding_energies_are_measured_and_the_cross_sections_calculated(
+        self,
+    ) -> None:
+        # Not decoration. The ratio between the two lines is what decides how
+        # badly one can distort the other, and it rests on a central potential
+        # rather than on an instrument. A file that let a reader weigh it as a
+        # measurement would be overstating what this board's input is worth.
+        for name, line in neon_main_lines().items():
+            cross = line.cross_section
+            assert cross is not None
+            with self.subTest(name=name):
+                self.assertEqual(line.binding_energy.method, MEASURED)
+                self.assertEqual(cross.method, CALCULATED)
 
     def test_the_lines_this_board_needs_are_there(self) -> None:
         self.assertEqual(sorted(neon_main_lines()), ["2p", "2s"])

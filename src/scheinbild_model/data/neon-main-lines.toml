@@ -4,14 +4,22 @@
 # number here changes the row and re-runs instead of editing a module. The
 # reason that matters on this board is in ../../../docs/decisions/atomic-data.md.
 #
-# Every number carries two things beside its value. The source it was taken
-# from, precisely enough to find the number again, and how that source's terms
-# were understood, because whether a number may be shipped in a public
-# repository at all is a question per source rather than one answer for the
-# whole file. Where the terms do not permit it, the entry carries the citation
-# and a `fetch` step instead of the value. Nothing in this file needs that
-# today: both sources below permit redistribution, and the loader carries the
-# other shape because the next data file may not be so lucky.
+# Every number carries three things beside its value. The source it was taken
+# from, precisely enough to find the number again; how that source's terms were
+# understood, because whether a number may be shipped in a public repository at
+# all is a question per source rather than one answer for the whole file; and
+# whether the number was measured or calculated. Where the terms do not permit
+# it, the entry carries the citation and a `fetch` step instead of the value.
+# Nothing in this file needs that today: both sources below permit
+# redistribution, and the loader carries the other shape because the next data
+# file may not be so lucky.
+#
+# The two binding energies here are measured and the two cross sections are
+# calculated, and that is not a detail. The cross sections come out of a central
+# potential rather than off an instrument, so the ratio between the two lines,
+# which is what decides how badly one can distort the other, rests on a
+# calculation. A file that did not say so would let a reader weigh it as a
+# measurement.
 #
 # The loader refuses a row missing any of it, so an entry whose provenance was
 # going to be filled in later stops a run rather than waiting for a reviewer.
@@ -56,6 +64,7 @@ name = "2p"
 # rather than the doublet a high resolution measurement resolves.
 [line.binding_energy]
 unit = "eV"
+method = "measured"
 value = 21.564541
 source = """
 NIST Atomic Spectra Database, ionisation energy of Ne I: 21.564541 eV with a
@@ -73,6 +82,7 @@ which the citation above does. https://www.nist.gov/open/license"""
 # refused by the threshold rather than by this table.
 [line.cross_section]
 unit = "Mb"
+method = "calculated"
 photon_energy_electronvolt = [
   21.2, 26.8, 40.8, 80.0, 132.3, 151.4, 200.0, 300.0,
   600.0, 800.0, 1041.0, 1253.6, 1486.6, 8047.8,
@@ -105,6 +115,7 @@ name = "2s"
 # the sum of two rows and the sum is written out in the source.
 [line.binding_energy]
 unit = "eV"
+method = "measured"
 value = 48.475013
 source = """
 NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
@@ -125,6 +136,7 @@ which the citation above does. https://www.nist.gov/open/license"""
 # extrapolated value.
 [line.cross_section]
 unit = "Mb"
+method = "calculated"
 photon_energy_electronvolt = [
   80.0, 132.3, 151.4, 200.0, 300.0, 600.0,
   800.0, 1041.0, 1253.6, 1486.6, 8047.8,
