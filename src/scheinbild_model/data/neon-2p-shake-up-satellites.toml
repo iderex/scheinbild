@@ -1,0 +1,713 @@
+# The neon shake up satellites that accompany 2p emission.
+#
+# This is the file whose numbers decide the outcome of the whole board, and it
+# is worth saying so here rather than in a document nobody opens beside it. If
+# the satellite strength is too low, no analysis bias appears and the hypothesis
+# fails for a reason that has nothing to do with the hypothesis. If it is too
+# high, a bias appears that the real measurement never had. Neither error
+# announces itself in a spectrogram, and both look like a result.
+#
+# What the satellites are: the ion is left in a state where one 2p electron has
+# gone and a second has been shaken up into a higher orbital. Those states lie
+# between 52 and 60 eV in binding energy, above the 2s main line at 48.475013
+# eV, so in kinetic energy they sit below it and the streaking field moves them
+# through the window the 2s line is fitted in.
+#
+# Nothing in this file says that these are satellites. Every row has the shape
+# every other emission line has, and the reason is in
+# ../../../docs/decisions/satellite-lines.md: a model that could tell a
+# satellite from a main line is a model that could be made to treat them
+# differently by a change nobody reviewed.
+#
+# Every number carries the source it was taken from, how that source's terms
+# were understood, and whether it was measured or calculated. Where the terms do
+# not permit the number to be shipped here, the entry carries the citation and a
+# fetch step in place of the value.
+#
+# THE STRENGTHS ARE NOT IN THIS FILE. Every one of them is a fetch step, and a
+# fresh clone therefore cannot assemble a contaminated spectrogram from this
+# file alone. That is the cost of the rule above and it is stated rather than
+# left to be discovered: the only quantitative source found for these strengths
+# is a journal paper whose table may not be reproduced here, so what stands in
+# the file is the citation and the arithmetic that turns it into a strength. The
+# binding energies are a different case and they are here, because they come
+# from a database that permits it.
+#
+# The calculated source is cited per entry and its authors are named once, here:
+# Feist, J., Zatsarinny, O., Nagele, S., Pazourek, R., Burgdoerfer, J., Guan, X.,
+# Bartschat, K. and Schneider, B. I. Its licence was read off the abstract page
+# of the preprint at https://arxiv.org/abs/1401.2878v2.
+#
+# Where the two sources disagree the disagreement is recorded rather than
+# averaged away. The measured levels and the calculated target energies of that
+# work are not the same numbers, and the calculated ones lie above the measured
+# ones throughout. The spread between them is an input to how much confidence a
+# result off this file deserves, and an average would be one number with that
+# information deleted.
+#
+# What is not here, said rather than found later. The calculated source lists
+# one further state, 2p4(1S)3d(2De), for which the database carries no measured
+# level, so it is not a row and the satellite strength this file can express is
+# short of that source's total by it. That source also lists 2p4 states that
+# contribute nothing along the polarisation axis at the photon energy it covers,
+# and those are not rows either. Each row stands for a term rather than for one
+# of its levels; where the term has a second level the entry says how far above
+# it lies, and the largest of those gaps is under 0.03 eV.
+#
+# The intrinsic delay of a satellite is not in this file and the loader refuses
+# a field that names one. It is a run parameter that arrives through the
+# manifest, because it is not well known and a number for it beside a cited
+# binding energy would be a confidence the field does not have.
+
+# How a value between two tabulated photon energies is obtained. The same rule
+# the main line file names, and named here for the same reason: the number the
+# model uses between two rows is a product of the table and of this choice
+# together. No table in this file carries rows today, so nothing reads it yet
+# and a file that did not name it still could not be read afterwards.
+interpolation = "linear-in-log-photon-energy-and-log-cross-section"
+
+[[line]]
+name = "2p4-1D-3s-2D"
+
+[line.binding_energy]
+unit = "eV"
+method = "measured"
+value = 52.11351849
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s2.2p4.(1D).3s 2D5/2, which is where the ion is left when a 2p electron goes
+and a second 2p electron is shaken up, lies 30.54897749 eV above it with a
+standard uncertainty of 0.00000019 eV. 21.564541 + 30.54897749 = 52.11351849 eV
+is therefore the energy to reach that state from neutral neon. Ionisation
+energy: https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html The term's other
+level, J=3/2, lies 0.00041669 eV above this one; this row stands for the term
+and the file does not resolve its fine structure."""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+[[line.binding_energy.disagreement]]
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3s(2De). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column E of the row
+2p4(1D)3s(2De). It is that state's energy above the 2p threshold, in the same
+reference as the NIST level here, so the binding energy this source holds is
+21.564541 eV plus that number."""
+
+[line.relative_strength]
+relative_to = "2p"
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3s(2De). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column Pion of the row
+2p4(1D)3s(2De), divided by the column Pion of the row 2p [2p5(2Po)]. Both are
+evaluated for emission along the polarisation axis and at a photon energy of
+106 eV, which is the only photon energy that table covers, so this line has no
+strength at any other."""
+
+[[line]]
+name = "2p4-3P-3p-2P"
+
+[line.binding_energy]
+unit = "eV"
+method = "measured"
+value = 53.07698341
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s2.2p4.(3P).3p 2P*3/2, which is where the ion is left when a 2p electron goes
+and a second 2p electron is shaken up, lies 31.51244241 eV above it with a
+standard uncertainty of 0.00000017 eV. 21.564541 + 31.51244241 = 53.07698341 eV
+is therefore the energy to reach that state from neutral neon. Ionisation
+energy: https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html The term's other
+level, J=1/2, lies 0.01576824 eV above this one; this row stands for the term
+and the file does not resolve its fine structure."""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+[[line.binding_energy.disagreement]]
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(3P)3p(2Po). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column E of the row
+2p4(3P)3p(2Po). It is that state's energy above the 2p threshold, in the same
+reference as the NIST level here, so the binding energy this source holds is
+21.564541 eV plus that number."""
+
+[line.relative_strength]
+relative_to = "2p"
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(3P)3p(2Po). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column Pion of the row
+2p4(3P)3p(2Po), divided by the column Pion of the row 2p [2p5(2Po)]. Both are
+evaluated for emission along the polarisation axis and at a photon energy of
+106 eV, which is the only photon energy that table covers, so this line has no
+strength at any other."""
+
+[[line]]
+name = "2p4-1D-3p-2F"
+
+[line.binding_energy]
+unit = "eV"
+method = "measured"
+value = 55.58141100
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s2.2p4.(1D).3p 2F*5/2, which is where the ion is left when a 2p electron goes
+and a second 2p electron is shaken up, lies 34.01687000 eV above it with a
+standard uncertainty of 0.00000025 eV. 21.564541 + 34.01687000 = 55.58141100 eV
+is therefore the energy to reach that state from neutral neon. Ionisation
+energy: https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html The term's other
+level, J=7/2, lies 0.0055202 eV above this one; this row stands for the term
+and the file does not resolve its fine structure."""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+[[line.binding_energy.disagreement]]
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3p(2Fo). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column E of the row
+2p4(1D)3p(2Fo). It is that state's energy above the 2p threshold, in the same
+reference as the NIST level here, so the binding energy this source holds is
+21.564541 eV plus that number."""
+
+[line.relative_strength]
+relative_to = "2p"
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3p(2Fo). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column Pion of the row
+2p4(1D)3p(2Fo), divided by the column Pion of the row 2p [2p5(2Po)]. Both are
+evaluated for emission along the polarisation axis and at a photon energy of
+106 eV, which is the only photon energy that table covers, so this line has no
+strength at any other."""
+
+[[line]]
+name = "2p4-1D-3p-2P"
+
+[line.binding_energy]
+unit = "eV"
+method = "measured"
+value = 55.81850307
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s2.2p4.(1D).3p 2P*3/2, which is where the ion is left when a 2p electron goes
+and a second 2p electron is shaken up, lies 34.25396207 eV above it with a
+standard uncertainty of 0.00000025 eV. 21.564541 + 34.25396207 = 55.81850307 eV
+is therefore the energy to reach that state from neutral neon. Ionisation
+energy: https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html The term's other
+level, J=1/2, lies 0.02913183 eV above this one; this row stands for the term
+and the file does not resolve its fine structure."""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+[[line.binding_energy.disagreement]]
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3p(2Po). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column E of the row
+2p4(1D)3p(2Po). It is that state's energy above the 2p threshold, in the same
+reference as the NIST level here, so the binding energy this source holds is
+21.564541 eV plus that number."""
+
+[line.relative_strength]
+relative_to = "2p"
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3p(2Po). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column Pion of the row
+2p4(1D)3p(2Po), divided by the column Pion of the row 2p [2p5(2Po)]. Both are
+evaluated for emission along the polarisation axis and at a photon energy of
+106 eV, which is the only photon energy that table covers, so this line has no
+strength at any other."""
+
+[[line]]
+name = "2p4-1S-3s-2S"
+
+[line.binding_energy]
+unit = "eV"
+method = "measured"
+value = 55.8681312
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s2.2p4.(1S).3s 2S1/2, which is where the ion is left when a 2p electron goes
+and a second 2p electron is shaken up, lies 34.3035902 eV above it with a
+standard uncertainty of 0.0000004 eV. 21.564541 + 34.3035902 = 55.8681312 eV is
+therefore the energy to reach that state from neutral neon. Ionisation energy:
+https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html"""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+[[line.binding_energy.disagreement]]
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1S)3s(2Se). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column E of the row
+2p4(1S)3s(2Se). It is that state's energy above the 2p threshold, in the same
+reference as the NIST level here, so the binding energy this source holds is
+21.564541 eV plus that number."""
+
+[line.relative_strength]
+relative_to = "2p"
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1S)3s(2Se). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column Pion of the row
+2p4(1S)3s(2Se), divided by the column Pion of the row 2p [2p5(2Po)]. Both are
+evaluated for emission along the polarisation axis and at a photon energy of
+106 eV, which is the only photon energy that table covers, so this line has no
+strength at any other."""
+
+[[line]]
+name = "2p4-3P-3d-2D"
+
+[line.binding_energy]
+unit = "eV"
+method = "measured"
+value = 56.3134615
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s2.2p4.(3P).3d 2D5/2, which is where the ion is left when a 2p electron goes
+and a second 2p electron is shaken up, lies 34.7489205 eV above it with a
+standard uncertainty of 0.0000004 eV. 21.564541 + 34.7489205 = 56.3134615 eV is
+therefore the energy to reach that state from neutral neon. Ionisation energy:
+https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html The term's other
+level, J=3/2, lies 0.0253684 eV above this one; this row stands for the term
+and the file does not resolve its fine structure."""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+[[line.binding_energy.disagreement]]
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(3P)3d(2De). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column E of the row
+2p4(3P)3d(2De). It is that state's energy above the 2p threshold, in the same
+reference as the NIST level here, so the binding energy this source holds is
+21.564541 eV plus that number."""
+
+[line.relative_strength]
+relative_to = "2p"
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(3P)3d(2De). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column Pion of the row
+2p4(3P)3d(2De), divided by the column Pion of the row 2p [2p5(2Po)]. Both are
+evaluated for emission along the polarisation axis and at a photon energy of
+106 eV, which is the only photon energy that table covers, so this line has no
+strength at any other."""
+
+[[line]]
+name = "2p4-1D-3d-2G"
+
+[line.binding_energy]
+unit = "eV"
+method = "measured"
+value = 59.4248523
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s2.2p4.(1D).3d 2G9/2, which is where the ion is left when a 2p electron goes
+and a second 2p electron is shaken up, lies 37.8603113 eV above it with a
+standard uncertainty of 0.0000004 eV. 21.564541 + 37.8603113 = 59.4248523 eV is
+therefore the energy to reach that state from neutral neon. Ionisation energy:
+https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html The term's other
+level, J=7/2, lies 0.0001378 eV above this one; this row stands for the term
+and the file does not resolve its fine structure."""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+[[line.binding_energy.disagreement]]
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3d(2Ge). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column E of the row
+2p4(1D)3d(2Ge). It is that state's energy above the 2p threshold, in the same
+reference as the NIST level here, so the binding energy this source holds is
+21.564541 eV plus that number."""
+
+[line.relative_strength]
+relative_to = "2p"
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3d(2Ge). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column Pion of the row
+2p4(1D)3d(2Ge), divided by the column Pion of the row 2p [2p5(2Po)]. Both are
+evaluated for emission along the polarisation axis and at a photon energy of
+106 eV, which is the only photon energy that table covers, so this line has no
+strength at any other."""
+
+[[line]]
+name = "2p4-1S-3p-2P"
+
+[line.binding_energy]
+unit = "eV"
+method = "measured"
+value = 59.4291412
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s2.2p4.(1S).3p 2P*3/2, which is where the ion is left when a 2p electron goes
+and a second 2p electron is shaken up, lies 37.8646002 eV above it with a
+standard uncertainty of 0.0000004 eV. 21.564541 + 37.8646002 = 59.4291412 eV is
+therefore the energy to reach that state from neutral neon. Ionisation energy:
+https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html The term's other
+level, J=1/2, lies 0.0012276 eV above this one; this row stands for the term
+and the file does not resolve its fine structure."""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+[[line.binding_energy.disagreement]]
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1S)3p(2Po). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column E of the row
+2p4(1S)3p(2Po). It is that state's energy above the 2p threshold, in the same
+reference as the NIST level here, so the binding energy this source holds is
+21.564541 eV plus that number."""
+
+[line.relative_strength]
+relative_to = "2p"
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1S)3p(2Po). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column Pion of the row
+2p4(1S)3p(2Po), divided by the column Pion of the row 2p [2p5(2Po)]. Both are
+evaluated for emission along the polarisation axis and at a photon energy of
+106 eV, which is the only photon energy that table covers, so this line has no
+strength at any other."""
+
+[[line]]
+name = "2p4-1D-3d-2S"
+
+[line.binding_energy]
+unit = "eV"
+method = "measured"
+value = 59.5050765
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s2.2p4.(1D).3d 2S1/2, which is where the ion is left when a 2p electron goes
+and a second 2p electron is shaken up, lies 37.9405355 eV above it with a
+standard uncertainty of 0.0000004 eV. 21.564541 + 37.9405355 = 59.5050765 eV is
+therefore the energy to reach that state from neutral neon. Ionisation energy:
+https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html"""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+[[line.binding_energy.disagreement]]
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3d(2Se). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column E of the row
+2p4(1D)3d(2Se). It is that state's energy above the 2p threshold, in the same
+reference as the NIST level here, so the binding energy this source holds is
+21.564541 eV plus that number."""
+
+[line.relative_strength]
+relative_to = "2p"
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3d(2Se). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column Pion of the row
+2p4(1D)3d(2Se), divided by the column Pion of the row 2p [2p5(2Po)]. Both are
+evaluated for emission along the polarisation axis and at a photon energy of
+106 eV, which is the only photon energy that table covers, so this line has no
+strength at any other."""
+
+[[line]]
+name = "2p4-1D-3d-2D"
+
+[line.binding_energy]
+unit = "eV"
+method = "measured"
+value = 59.5338844
+source = """
+NIST Atomic Spectra Database, two rows added. The ionisation energy of Ne I,
+21.564541 eV, reaches the Ne II ground level 2s2.2p5 2P*3/2; the Ne II level
+2s2.2p4.(1D).3d 2D5/2, which is where the ion is left when a 2p electron goes
+and a second 2p electron is shaken up, lies 37.9693434 eV above it with a
+standard uncertainty of 0.0000004 eV. 21.564541 + 37.9693434 = 59.5338844 eV is
+therefore the energy to reach that state from neutral neon. Ionisation energy:
+https://physics.nist.gov/PhysRefData/ASD/ionEnergy.html Ne II levels:
+https://physics.nist.gov/PhysRefData/ASD/levels_form.html The term's other
+level, J=3/2, lies 0.0023988 eV above this one; this row stands for the term
+and the file does not resolve its fine structure."""
+terms = """
+Works of NIST employees are not subject to copyright protection in the United
+States, and NIST asks to be acknowledged explicitly as the source of the data,
+which the citation above does. https://www.nist.gov/open/license"""
+
+[[line.binding_energy.disagreement]]
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3d(2De). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column E of the row
+2p4(1D)3d(2De). It is that state's energy above the 2p threshold, in the same
+reference as the NIST level here, so the binding energy this source holds is
+21.564541 eV plus that number."""
+
+[line.relative_strength]
+relative_to = "2p"
+method = "calculated"
+source = """
+Feist et al. (2014), Phys. Rev. A 89, 033417,
+https://doi.org/10.1103/PhysRevA.89.033417, read in the preprint
+https://arxiv.org/abs/1401.2878v2,
+Table I, row 2p4(1D)3d(2De). The row is an
+ionic target state of a 38 state B-spline R-matrix calculation."""
+terms = """
+The preprint carries the arXiv non-exclusive licence 1.0,
+https://arxiv.org/licenses/nonexclusive-distrib/1.0/, which grants a
+distribution right to arXiv alone, and the published version is under the
+publisher's copyright. Neither permits that table to be reproduced here, so
+this entry carries the citation and a fetch step in place of the number."""
+fetch = """
+Read Table I of the source above and take the column Pion of the row
+2p4(1D)3d(2De), divided by the column Pion of the row 2p [2p5(2Po)]. Both are
+evaluated for emission along the polarisation axis and at a photon energy of
+106 eV, which is the only photon energy that table covers, so this line has no
+strength at any other."""

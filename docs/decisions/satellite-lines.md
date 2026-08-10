@@ -43,9 +43,11 @@ result does. That is the only form in which a disagreement about this number is
 testable.
 
 Whether the values themselves ship in the repository or only their references do
-is entry 6 in issue #1 and is not settled here. Either shape fits the
+was entry 6 in issue #1 and is not settled here. Either shape fits the
 arrangement above, because what this decision fixes is that the set is data with
-a source per number, not where the bytes of the number come from.
+a source per number, not where the bytes of the number come from. The answer,
+and what the shipped satellite file turned out to be able to carry under it, is
+in [atomic-data.md](atomic-data.md).
 
 ## The null case this shape makes expressible
 
