@@ -35,6 +35,10 @@ Use GitHub's private vulnerability reporting on this repository, under the
 Security tab. It is private to the maintainer and it keeps the report and any
 fix together.
 
+The form is here, without navigating:
+
+<https://github.com/iderex/scheinbild/security/advisories/new>
+
 Include what you fed the code, what happened, and the command you ran. A report
 with a file that reproduces the behaviour is worth several without one.
 
